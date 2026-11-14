@@ -1,0 +1,8 @@
+#include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
+&pinctrl {
+ ania_spi: ania_spi {
+  group1 { pinmux = <SPIS2_CSEL_GPIO21 SPIS2_MOSI_GPIO38 SPIS2_SCLK_GPIO48>; input-enable; };
+  group2 { pinmux = <SPIS2_MISO_GPIO47>; output-enable; };
+ };
+};
+&spi2 { #address-cells = <1>; #size-cells = <0>; status = "okay"; pinctrl-0 = <&ania_spi>; pinctrl-names = "default"; };

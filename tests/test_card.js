@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+let Card;const sandbox={HTMLElement:class{},customElements:{define:(_,c)=>Card=c},window:{},Date,Number,Math,setInterval,clearInterval,setTimeout};
+const path=require('path');let source=path.join(__dirname,'../ha_bundle/www/ania-remote.js');if(!fs.existsSync(source))source=path.join(__dirname,'../../home_assistant/www/ania-remote.js');
+vm.runInNewContext(fs.readFileSync(source,'utf8'),sandbox);
+const card=new Card();card.config={entity:'sensor.ania_consigne',max_age_seconds:90};const stamp=Date.now()-1000;
+card.h={states:{'sensor.ania_radio':{state:'confirmed',attributes:{setpoint_c:13,observed_epoch:stamp/1000},last_updated:new Date(stamp).toISOString()}}};
+assert(card.reading().fresh);card.h.states['sensor.ania_radio'].state='stale';assert.equal(card.reading().value,13);assert(!card.reading().fresh);
+card.h.states['sensor.ania_radio'].attributes={};assert.equal(card.reading().value,13);assert(!card.reading().fresh);
+card.accept({setpoint_c:14,observed_at:Date.now()/1000});assert.equal(card.reading().value,14);
+assert.throws(()=>card.accept({setpoint_c:14,observed_at:0}));
+console.log('Carte : valeur connue conservée, état périmé distinct, confirmation réelle exigée.');

@@ -1,0 +1,6 @@
+board:
+  name: ania_nano
+  full_name: Arduino Nano ESP32 receiver
+  vendor: arduino
+  socs:
+    - name: esp32s3

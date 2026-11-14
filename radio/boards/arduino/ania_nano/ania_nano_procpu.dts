@@ -1,0 +1,19 @@
+/dts-v1/;
+#include <espressif/esp32s3/esp32s3.dtsi>
+#include <espressif/partitions_0x0_amp.dtsi>
+/ {
+ model = "Arduino Nano ESP32 RX";
+ compatible = "arduino,nano-esp32";
+ chosen {
+ zephyr,sram = &sram1;
+ zephyr,console = &usb_serial;
+ zephyr,shell-uart = &usb_serial;
+ zephyr,flash = &flash0;
+ zephyr,code-partition = &slot0_partition;
+ };
+};
+&flash0 { reg = <0x0 DT_SIZE_M(16)>; ranges = <0x0 0x0 DT_SIZE_M(16)>; };
+&psram0 { size = <DT_SIZE_M(8)>; status = "okay"; };
+&usb_serial { status = "okay"; };
+&trng0 { status = "okay"; };
+&wifi { status = "okay"; };

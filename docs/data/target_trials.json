@@ -1,0 +1,17 @@
+[
+  {
+    "target_c": 13,
+    "steps_confirmed": 0,
+    "total_seconds": 1.5132592390291393
+  },
+  {
+    "target_c": 14,
+    "steps_confirmed": 1,
+    "total_seconds": 3.110034208279103
+  },
+  {
+    "target_c": 13,
+    "steps_confirmed": 1,
+    "total_seconds": 3.2733414452522993
+  }
+]

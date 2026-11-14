@@ -1,0 +1,17 @@
+secrets.h
+*.token
+.env
+.env.*
+!.env.example
+private/
+__pycache__/
+*.pyc
+.venv/
+build/
+*.bin
+*.elf
+*.hex
+*.sqlite*
+*.log
+.DS_Store
+captures/

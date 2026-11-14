@@ -1,0 +1,7 @@
+.git
+private
+**/secrets.h
+**/*.token
+**/__pycache__
+build
+enclosure

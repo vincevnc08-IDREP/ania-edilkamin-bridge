@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20.0)
+list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(ania_link)
+target_sources(app PRIVATE src/main.c src/spi_link.c src/fast_decode.c)
+set_source_files_properties(src/fast_decode.c PROPERTIES COMPILE_OPTIONS "-O3")

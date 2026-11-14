@@ -1,0 +1,59 @@
+manifest:
+  group-filter:
+  - -babblesim
+  - -optional
+  - -testing
+  projects:
+  - name: esp-sdr-zephyr
+    url: https://github.com/cyber-murmel/esp-sdr-zephyr
+    revision: 3214c16a7c9f136414cc5ae9d245ea290c98a6ce
+    path: esp-sdr-zephyr
+  - name: zephyr
+    url: https://github.com/cyber-murmel/zephyr
+    revision: ffb8a7cce5d31e098a09854d065e2e5ef7c493a4
+    path: modules/zephyr
+    west-commands: scripts/west-commands.yml
+  - name: hal_espressif
+    url: https://github.com/cyber-murmel/hal_espressif
+    revision: 54d64a1289e8d0cddccef6359a385ffb4c68b213
+    path: modules/hal/espressif
+    groups:
+    - hal
+  - name: libvrt
+    url: https://github.com/cyber-murmel/libvrt
+    revision: 6ee1471079b969d843aa2f7dbc6ac74c086168a2
+    path: modules/lib/libvrt
+  - name: esp-sdr
+    url: https://github.com/ESPARGOS/esp-sdr
+    revision: 1fe55351036337359bcac1ccca6db04c32fde4f8
+    path: modules/lib/esp-sdr
+  - name: esp-dsp
+    url: https://github.com/espressif/esp-dsp
+    revision: 3c8ac0fdfec83740b783e200862c8d0c056de0ad
+    path: modules/lib/esp-dsp
+  - name: fatfs
+    url: https://github.com/zephyrproject-rtos/fatfs
+    revision: 4f60a12c58c3de4246857ad87c40239ecd93349b
+    path: modules/fs/fatfs
+    groups:
+    - fs
+  - name: mbedtls
+    url: https://github.com/zephyrproject-rtos/mbedtls
+    revision: c43f34b93797e81fd0257c30004dcd0ae332ae51
+    path: modules/crypto/mbedtls
+    groups:
+    - crypto
+  - name: mcuboot
+    url: https://github.com/zephyrproject-rtos/mcuboot
+    revision: a8ffd2c312910cc648219bcb29e04260f7857492
+    path: bootloader/mcuboot
+    groups:
+    - bootloader
+  - name: tf-psa-crypto
+    url: https://github.com/zephyrproject-rtos/tf-psa-crypto
+    revision: 765af96a20a2b408474dcd950372ba9af4d26b62
+    path: modules/crypto/tf-psa-crypto
+    groups:
+    - crypto
+  self:
+    path: ania-edilkamin-bridge

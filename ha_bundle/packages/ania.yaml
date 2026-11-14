@@ -1,0 +1,96 @@
+lovelace:
+  resources:
+    - url: /local/ania-remote.js?v=6
+      type: module
+command_line:
+  - sensor:
+      name: Ania radio
+      unique_id: ania_radio
+      command: 'python3 /config/scripts/ania_ha.py read'
+      command_timeout: 35
+      scan_interval: 10
+      value_template: '{{ value_json.status }}'
+      json_attributes:
+        - setpoint_c
+        - observed_at
+        - observed_epoch
+        - reason
+template:
+  - sensor:
+      - name: Ania consigne
+        unique_id: ania_consigne
+        device_class: temperature
+        unit_of_measurement: '°C'
+        availability: >-
+          {{ is_state('sensor.ania_radio', 'confirmed') and
+             is_number(state_attr('sensor.ania_radio', 'setpoint_c')) and
+             0 <= as_timestamp(now()) - (state_attr('sensor.ania_radio', 'observed_epoch') | float(0)) < 90 }}
+        state: '{{ state_attr("sensor.ania_radio", "setpoint_c") }}'
+        attributes:
+          observed_at: '{{ state_attr("sensor.ania_radio", "observed_at") }}'
+          liaison: 'Passerelle Wi-Fi deux Nano'
+shell_command:
+  ania_plus_once: 'python3 /config/scripts/ania_ha.py plus'
+  ania_minus_once: 'python3 /config/scripts/ania_ha.py minus'
+  ania_target: 'python3 /config/scripts/ania_ha.py target {{ target_c | int(-1) }}'
+  ania_target_status: >-
+    python3 /config/scripts/ania_ha.py status '{{ request_id | regex_replace("[^a-zA-Z0-9_-]", "") }}'
+script:
+  ania_setpoint:
+    alias: Ania — valider la consigne
+    mode: single
+    sequence:
+      - action: shell_command.ania_target
+        data:
+          target_c: '{{ target_c | int(-1) }}'
+        response_variable: radio_result
+      - variables:
+          result: '{{ radio_result.stdout | from_json }}'
+      - stop: 'Demande enregistrée'
+        response_variable: result
+  ania_target_progress:
+    alias: Ania — progression de la consigne
+    mode: parallel
+    max: 3
+    sequence:
+      - action: shell_command.ania_target_status
+        data:
+          request_id: '{{ request_id }}'
+        response_variable: radio_result
+      - variables:
+          result: '{{ radio_result.stdout | from_json }}'
+      - stop: 'État de la demande'
+        response_variable: result
+  ania_commande:
+    alias: Ania — commande radio validée
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - condition: template
+        value_template: '{{ direction in ["plus", "minus"] }}'
+      - action: 'shell_command.ania_{{ direction }}_once'
+        response_variable: radio_result
+      - variables:
+          confirmed: "{{ radio_result.stdout | from_json }}"
+      - stop: "Confirmation radio disponible"
+        response_variable: confirmed
+  ania_plus:
+    alias: Ania — augmenter la consigne
+    mode: single
+    sequence:
+      - action: script.ania_commande
+        data:
+          direction: plus
+        response_variable: confirmed
+      - stop: "Confirmation radio disponible"
+        response_variable: confirmed
+  ania_minus:
+    alias: Ania — diminuer la consigne
+    mode: single
+    sequence:
+      - action: script.ania_commande
+        data:
+          direction: minus
+        response_variable: confirmed
+      - stop: "Confirmation radio disponible"
+        response_variable: confirmed

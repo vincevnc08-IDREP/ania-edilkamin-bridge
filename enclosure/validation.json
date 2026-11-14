@@ -1,0 +1,65 @@
+{
+  "couvercle.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 5072.634030774435,
+    "components": 1,
+    "bounds_mm": [
+      [
+        -30.0,
+        -18.0,
+        3.8147e-07
+      ],
+      [
+        30.0,
+        18.0,
+        11.0
+      ]
+    ],
+    "faces": 3896
+  },
+  "socle.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 16335.367803358035,
+    "components": 1,
+    "bounds_mm": [
+      [
+        -30.0,
+        -18.0,
+        0.0
+      ],
+      [
+        30.0,
+        18.0,
+        26.0
+      ]
+    ],
+    "faces": 3040
+  },
+  "gabarit_essai.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 8663.649353846193,
+    "components": 1,
+    "bounds_mm": [
+      [
+        -30.0,
+        -18.0,
+        0.0
+      ],
+      [
+        30.0,
+        18.0,
+        9.3
+      ]
+    ],
+    "faces": 2252
+  },
+  "assembly_check": {
+    "lid_base_overlap_volume_mm3": 0.0,
+    "coplanar_contact_at_seam": true,
+    "board_collision_empty": true,
+    "physical_fit_tested": false
+  }
+}

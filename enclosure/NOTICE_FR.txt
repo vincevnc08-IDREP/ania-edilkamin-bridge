@@ -1,0 +1,82 @@
+ANIA DUAL — BOÎTIER IMPRIMABLE, VERSION 1
+Dimensions extérieures : 60 × 36 × 28,4 mm (hors têtes de vis).
+Socle et couvercle séparés ; modèle CAO réel, pas une image conceptuelle.
+
+EMPILAGE PRÉVU
+Nano 33 IoT dessous ; Nano ESP32 dessus ; composants vers le haut et les
+USB du même côté. Mesure fournie : 7 mm entre faces supérieures et environ
+5 mm entre le dessus de l’IoT et le dessous de l’ESP32. Le modèle utilise
+une épaisseur nominale de PCB de 2 mm correspondant à cette différence.
+La carte inférieure repose à 8 mm du dessous du boîtier ; 5,6 mm de vide
+sont disponibles sous son PCB pour les broches et soudures.
+L’ouverture commune de 16,5 mm de largeur donne accès aux deux USB. Elle
+évite une cloison fine entre les prises et laisse passer leurs gaines.
+Le corps des deux fiches doit néanmoins pouvoir cohabiter avec cet
+écartement réel : leurs dimensions varient selon les câbles.
+
+FIXATION DES CARTES
+Quatre petits pions de 1,3 mm entrent dans les trous des coins de la carte
+inférieure (trous nominaux 1,66 mm). Les épaules portent seulement sur les
+coins du PCB ; elles ne doivent pas toucher de soudure ou composant.
+Le couvercle possède quatre butées placées au-dessus des coins du PCB
+supérieur, avec un jeu vertical nominal de 0,4 mm. Ne pas serrer pour
+compenser une erreur de hauteur : les cartes ne doivent jamais fléchir.
+Les composants des cartes montrés dans les vues sont schématiques ; les
+positions des trous, le contour et l’écartement sont dimensionnés.
+
+IMPRESSION
+Fichiers à imprimer : socle.stl et couvercle.stl, échelle 100 %, en mm.
+Les STL sont déjà orientés pour le plateau : socle sur son fond ; couvercle
+face extérieure contre le plateau, butées vers le haut.
+Réglage de départ : buse 0,4 mm, couches 0,20 mm, 3 périmètres, remplissage
+20 %. Utiliser le profil de température adapté à son filament.
+Supports normalement inutiles dans ces orientations ; contrôler l’aperçu
+couche par couche du trancheur. La gravure et les petits pions demandent
+une première couche correctement réglée. Éviter un brim dans les trous.
+PETG standard non chargé conseillé. Une seule couleur convient ; l’aperçu
+montre un socle anthracite et un couvercle turquoise imprimés séparément.
+
+ASSEMBLAGE
+1. Imprimer d’abord gabarit_essai.stl : fond bas avec pions, pour vérifier
+   l’entraxe, l’assise et le passage des soudures sans imprimer toute la coque.
+   Ce gabarit ne valide pas à lui seul la hauteur du couvercle ni les gaines USB.
+2. Hors tension, poser l’empilage, IoT en dessous. Les quatre pions doivent
+   entrer librement ; contrôler le dégagement sous le PCB et aux coins.
+3. Sur le socle complet, essayer les deux câbles, sans forcer sur les prises.
+4. Poser le couvercle. Son emboîtement doit se faire librement, sans pression
+   sur les composants. Vérifier que l’empilage ne sort pas de ses pions.
+5. Fermer avec 4 vis autotaraudeuses pour plastique de diamètre 2,5 × 8 mm,
+   tête cylindrique/ronde de diamètre inférieur à 5,4 mm. Avant-trous 2,1 mm.
+   Serrer doucement à la main, pas de vis à tête fraisée, pas d’inserts requis.
+6. Refaire un essai radio après fermeture. Aucun blindage métallique ni
+   filament chargé en métal/carbone n’est prévu. Placer le boîtier hors de
+   la chaleur directe et jamais sur le poêle. Il n’est pas étanche.
+
+AJUSTEMENT DU MODÈLE
+Ouvrir ania_dual.scad dans OpenSCAD. Paramètres utiles : pitch_z=7,
+pcb_t=2, pcb_bottom=8, fit=0.3, lid_clearance=0.4, usb_w=16.5.
+Les butées suivent automatiquement la hauteur du PCB supérieur.
+Recalculer les DEUX pièces si l’empilage ou la hauteur du socle change.
+Commandes :
+ openscad -o socle.stl -D 'part="base"' ania_dual.scad
+ openscad -o couvercle.stl -D 'part="lid"' ania_dual.scad
+ openscad -o gabarit_essai.stl -D 'part="fit_test"' ania_dual.scad
+Les modes assembly/exploded servent seulement à la visualisation.
+
+VÉRIFICATION ET LIMITES
+Maillages contrôlés informatiquement : fermés, volumes positifs et une
+seule pièce connexe par STL. Voir validation.json.
+Absence d’interpénétration volumique vérifiée entre socle/couvercle (contact
+plan de fermeture normal) et avec les volumes
+schématiques de PCB/USB. Ce contrôle ne remplace pas un essai physique.
+Le montage réel n’a pas été mesuré au pied à coulisse par le concepteur et
+le boîtier n’a pas encore été imprimé : utiliser le gabarit avant la coque.
+
+SOURCES MÉCANIQUES
+Arduino Nano ESP32, plan mécanique page 17 : contour 43,18 × 17,78 mm,
+entraxes 40,64 × 15,24 mm, trous rayon 0,83 mm.
+https://docs.arduino.cc/resources/datasheets/ABX00083-datasheet.pdf
+Arduino Nano 33 IoT, plan mécanique page 12 : contour 43,16 × 17,77 mm,
+mêmes entraxes et diamètre de trous. Le contour maximal ESP32 est retenu.
+https://docs.arduino.cc/resources/datasheets/ABX00027-datasheet.pdf
+Écartement et orientation : mesures fournies par l’utilisateur le 14/11/2026.
