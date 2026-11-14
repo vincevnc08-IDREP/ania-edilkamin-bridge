@@ -1,5 +1,7 @@
 # ANIA · Radio Bridge
 
+[![Tests](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml/badge.svg)](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml) ![Statut](https://img.shields.io/badge/statut-prototype_expérimental-ffd166) ![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-5ce3cb)
+
 **Une passerelle radio expérimentale pour piloter la consigne d’un Edilkamin Ania depuis Home Assistant.**
 
 Deux Arduino Nano empilées, une liaison Wi-Fi et un boîtier imprimable. Documentation en français, code source et tests inclus.
