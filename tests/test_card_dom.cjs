@@ -5,7 +5,7 @@ const {chromium}=require('playwright'),assert=require('assert'),path=require('pa
  await page.addScriptTag({content:"customElements.define('ha-card',class extends HTMLElement{constructor(){super();this.attachShadow({mode:'open'}).innerHTML='<style>:host{display:block}</style><slot></slot>'}})"});
  await page.addScriptTag({path:path.join(__dirname,'../ha_bundle/www/ania-remote.js')});
  await page.evaluate(()=>{window.calls=[];for(const id of ['auto','manual']){let c=document.getElementById(id);c.setConfig({enable_commands:true});c.hass={states:{'sensor.ania_radio':{state:'confirmed',attributes:{mode:id==='auto'?'AUTO':'MANUAL',power_mode:id==='manual'?2:null,setpoint_c:id==='auto'?17:null,observed_epoch:Date.now()/1000},last_updated:new Date().toISOString()}},services:{script:{ania_plus:{},ania_minus:{},ania_mode:{},ania_setpoint:{},ania_power:{}}},callService:async(d,s,data)=>{window.calls.push({s,data});await new Promise(r=>setTimeout(r,50));return {response:s==='ania_power'?{status:'sent',hold_ms:3000,release_sent:true,power_state:null}:{status:'confirmed',mode:'MANUAL',power_mode:1,setpoint_c:null,observed_at:Date.now()/1000}}}}}});
- await page.screenshot({path:path.join(__dirname,'../docs/assets/ha_card.png'),fullPage:true});
+ await page.screenshot({path:path.join(__dirname,'../docs/assets/ha_card_v8.png'),fullPage:true});
  assert.equal(await page.evaluate(()=>document.getElementById('manual').el('value').textContent),'P2');
  await page.evaluate(()=>{let c=document.getElementById('auto');c.el('power').click();c.el('power').click()});
  await page.waitForFunction(()=>document.getElementById('auto').message.includes('Power envoyé'));

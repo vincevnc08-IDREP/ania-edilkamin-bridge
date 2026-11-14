@@ -2,7 +2,7 @@
 
 La carte est incluse dans le dépôt : [JavaScript](../ha_bundle/www/ania-remote.js), [package YAML](../ha_bundle/packages/ania.yaml), [script de liaison](../ha_bundle/scripts/ania_ha.py).
 
-![Aperçu de la vraie carte avec données de démonstration](assets/ha_card.png)
+![Aperçu de la vraie carte avec données de démonstration](assets/ha_card_v8.png)
 
 **Cet aperçu utilise le véritable composant JavaScript, avec des données fictives.** Ce n’est pas une capture de l’installation personnelle et aucune commande n’est envoyée.
 
@@ -37,9 +37,9 @@ Depuis la racine du dépôt :
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
-Ouvrir `http://127.0.0.1:8765/docs/ha_preview.html`. La page montre côte à côte un état confirmé et un état périmé. Les actions sont simulées et ne peuvent joindre ni HA ni le poêle.
+Ouvrir `http://127.0.0.1:8765/docs/ha_preview.html`. La page présente quatre situations : automatique, puissance manuelle, extinction et lecture périmée. Les actions sont simulées et ne peuvent joindre ni HA ni le poêle.
 
-Pour régénérer la capture, garder ce serveur ouvert, puis dans un autre terminal :
+Pour régénérer le visuel principal (automatique et P2), sans serveur HTTP :
 
 ```sh
 npm install --no-save playwright
@@ -47,7 +47,7 @@ npx playwright install chromium
 node scripts/screenshot_ha.cjs
 ```
 
-Le script vérifie les boutons activés pour l’état confirmé et désactivés pour l’état périmé avant d’enregistrer l’image. Cela ne remplace pas un essai dans Home Assistant.
+Le script affiche le composant actuel, vérifie les modes, le bouton Power et sa protection contre un double clic. Le visuel utilise des données fictives et n’envoie aucune commande réelle. Cela ne remplace pas un essai dans Home Assistant.
 
 ## Carte v8 : modes et Power
 

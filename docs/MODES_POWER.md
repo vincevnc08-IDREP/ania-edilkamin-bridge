@@ -61,3 +61,7 @@ sequenceDiagram
 ```
 
 L’intégration HA installée a également journalisé un envoi de 3 000 ms avec relâchement, et la lecture radio a confirmé `OFF 2`, puis `OFF 1`. Cela vérifie le chemin HA → serveur → Nano et la lecture du décompte. Sans observation du passage d’un état initial connu à l’extinction, ce constat ne suffit pas à attribuer l’arrêt à cette commande.
+
+## Confirmation depuis Home Assistant
+
+Après apparition du bouton Power dans HA et lecture du décompte OFF, l’utilisateur confirme : « oui ça marche ». Le fonctionnement du bouton Power depuis HA est donc confirmé sur cette installation. Cette réponse ne décrit pas précisément l’état initial ni l’intégralité de l’extinction ; ces limites restent distinctes.

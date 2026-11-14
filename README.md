@@ -53,7 +53,9 @@ La Nano ESP32 utilise sa radio pour le poêle. La Nano 33 IoT assure le Wi-Fi r�
 
 ## Carte Home Assistant
 
-![Carte HA — données de démonstration](docs/assets/ha_card.png)
+**Carte actuelle · v8 : Auto, P1/P2/P3 et Power 3 s.**
+
+![Carte HA v8 — données de démonstration](docs/assets/ha_card_v8.png)
 
 La carte est fournie avec son package et son script : **+ / −, saisie de cible, Auto/P1/P2/P3 et Power 3 s**. [Présentation et aperçu local](docs/CARTE_HA.md).
 
