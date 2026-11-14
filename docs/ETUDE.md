@@ -23,7 +23,8 @@ Ces choix décrivent le profil observé, pas une spécification officielle CYRF6
 | Confirmation par deux réponses | Mise en œuvre et contrôlée dans le logiciel |
 | Gain radio | Indice logiciel, pas une puissance mesurée en dBm |
 | Silence de 30 ms avant émission | Mesure d’atténuation possible des interférences ; causalité non prouvée |
-| Marche, extinction, arrêt et P1/P2/P3 | Non identifiés avec validation suffisante |
+| M/A et P1/P2/P3 | Transitions observées, lecture HA conditionnée au consensus |
+| Power 3 s | Démarrage observé ; extinction Nano et état physique non validés |
 | Autres cartes LX32/LX64 | Compatibilité non démontrée |
 | Firmware ATmega64 / codec OMNICARD | Piste historique non aboutie ; aucune clé validée ni déchiffrement revendiqué |
 
@@ -41,3 +42,5 @@ Une consigne cible est une succession de pas d’un degré, chaque pas devant ê
 - [Matériel SDR](https://sdrmm.com/docs/hardware)
 
 Les dépendances effectivement utilisées sont épinglées dans `west.yml`. Les autres liens sont des références de recherche, pas des dépendances installées.
+
+Les essais récents et leurs limites sont détaillés dans [Modes et Power](MODES_POWER.md).

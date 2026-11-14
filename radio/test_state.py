@@ -11,7 +11,7 @@ class Tests(unittest.TestCase):
  def test_parse_real_display(self):self.assertEqual(parse_frame(frame())['setpoint_c'],20)
  def test_unknown_display_preserved_not_onoff(self):
   raw=bytes([16])+b'OFF             ';raw+=frame_crc(raw).to_bytes(2,'little');f=dict(frame_hex=raw.hex(),continuous_verified=True)
-  r=parse_frame(f);self.assertEqual(r['kind'],'display_unparsed');self.assertEqual(r['power_state'],'unknown')
+  r=parse_frame(f);self.assertEqual(r['mode'],'OFF_DISPLAY');self.assertIsNone(r['setpoint_c']);self.assertIsNone(r['power_mode'])
  def test_binary_changed_flags_preserved(self):
   raw=bytes.fromhex('0700ff000010c8e2');raw+=frame_crc(raw).to_bytes(2,'little');r=parse_frame(dict(frame_hex=raw.hex(),continuous_verified=True));self.assertEqual(r['kind'],'binary');self.assertEqual(r['power_state'],'unknown')
  def test_crc_recomputed(self):

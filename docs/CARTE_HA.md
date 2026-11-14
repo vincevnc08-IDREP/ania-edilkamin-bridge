@@ -14,7 +14,7 @@ La carte est incluse dans le dépôt : [JavaScript](../ha_bundle/www/ania-remote
 - Indication de fraîcheur et suivi de la demande.
 - Dernière valeur conservée, mais commandes suspendues si la liaison n’est plus confirmée.
 
-Marche/arrêt et P1/P2/P3 ne sont pas implémentés. Leur mention dans l’interface indique une piste future, sans engagement de disponibilité.
+Depuis la version 0.2.0, Auto/P1/P2/P3 et Power 3 s sont intégrés ; les limites de confirmation sont décrites ci-dessous.
 
 ## Installation
 
@@ -48,3 +48,9 @@ node scripts/screenshot_ha.cjs
 ```
 
 Le script vérifie les boutons activés pour l’état confirmé et désactivés pour l’état périmé avant d’enregistrer l’image. Cela ne remplace pas un essai dans Home Assistant.
+
+## Carte v8 : modes et Power
+
+Auto/P1/P2/P3 sont proposés lorsque le retour radio est frais et exploitable. Power · 3 s est une action manuelle unique : cliquer lance les trois secondes radio, puis le relâchement. Un délai de 60 s sépare deux demandes. L’état allumé/éteint n’est pas déduit de la réussite de l’émission. Voir [les résultats et limites](MODES_POWER.md).
+
+Après mise à jour, recharger les scripts, Shell Command, entités de ligne de commande et modèles dans HA. La ressource doit être `/local/ania-remote.js?v=8`. Rafraîchir ensuite la page ; ne pas charger deux versions du composant simultanément.

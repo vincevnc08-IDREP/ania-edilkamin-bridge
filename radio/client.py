@@ -84,10 +84,10 @@ class Radio:
    misses=0 if recognized else misses+1
    if misses>=4:wide=True
    state=consensus.add(*poll)
-   if state and (expected is None or state['setpoint_c']==expected):return state
+   if state and (expected is None or (state.get('mode','AUTO')=='AUTO' and state['setpoint_c']==expected)):return state
   raise RuntimeError('Consigne inconnue : aucun consensus frais après interrogations bornées')
  def button_once(self,command):
-  if command not in ('plus','minus'):raise ValueError(command)
+  if command not in ('plus','minus','manual','automatic'):raise ValueError(command)
   self.check()
   # v8 returns immediately after the release; fresh neutral polls confirm effect.
   raw=self.cmd(f'tx {command}_once {self.gain}',rb'^TX_DONE[^\n]*\n',timeout=10)
@@ -100,6 +100,7 @@ class Radio:
    try:before=self.read_state()
    except Exception as exc:raise PrecheckError('Commande non émise : lecture préalable impossible — '+str(exc)) from exc
   precheck_seconds=time.monotonic()-began
+  if before.get('mode','AUTO')!='AUTO':raise PrecheckError('Commande température refusée hors mode automatique')
   target=before['setpoint_c']+(1 if command=='plus' else -1)
   if not 10<=target<=25:raise RuntimeError('Hors plage autorisée 10..25 °C')
   journal={'before':before,'command':command,'target':target,'result':'pending','sent_at':time.time(),'baseline_reused':reused,'precheck_seconds':precheck_seconds}
@@ -111,3 +112,43 @@ class Radio:
    journal['result']='confirmed_by_readback';return journal
   except Exception as exc:journal.update(result='indeterminate',error=str(exc));raise
   finally:journal['total_seconds']=time.monotonic()-began;path.write_text(json.dumps(journal,indent=2))
+
+ def confirm_mode(self,mode,level=None):
+  consensus=Consensus()
+  for _ in range(20):
+   poll=self.poll();state=consensus.add(*poll)
+   if state and state.get('mode')==mode and (level is None or state.get('power_mode')==level):return state
+  raise RuntimeError('Mode non confirmé ; aucune répétition automatique')
+ def set_mode(self,target):
+  if target not in ('AUTO','P1','P2','P3'):raise PrecheckError('Mode non autorisé')
+  before=self.read_state();state=before;sent=False;actions=[]
+  if state.get('mode') not in ('AUTO','MANUAL'):raise PrecheckError('Réglage refusé pendant extinction ou état non confirmé')
+  try:
+   wanted='AUTO' if target=='AUTO' else 'MANUAL'
+   if state['mode']!=wanted:
+    sent=True;button='automatic' if wanted=='AUTO' else 'manual'
+    self.button_once(button);actions.append(button);state=self.confirm_mode(wanted)
+   if wanted=='MANUAL':
+    level=int(target[1])
+    for _ in range(2):
+     if state['power_mode']==level:break
+     # Fresh pre-read prevents an external mode change from becoming a temperature step.
+     current=self.read_state()
+     if current.get('mode')!='MANUAL' or current.get('power_mode')!=state['power_mode']:raise RuntimeError('Changement externe de réglage ; arrêt de la séquence')
+     step=1 if state['power_mode']<level else -1;button='plus' if step==1 else 'minus';sent=True
+     self.button_once(button);actions.append(button);state=self.confirm_mode('MANUAL',state['power_mode']+step)
+    if state['power_mode']!=level:raise RuntimeError('Puissance cible non atteinte')
+   return dict(before=before,after=state,actions=actions)
+  except Exception as exc:
+   if not sent:raise PrecheckError(str(exc)) from exc
+   raise
+
+ def power_hold3s(self):
+  self.check()
+  raw=self.cmd('tx power_hold3s 10',rb'^(?:TX_DONE|POWER_REJECT)[^\n]*\n',timeout=10)
+  (self.out/f'power_{time.time_ns()}.log').write_bytes(raw)
+  if b'POWER_REJECT' in raw:raise PrecheckError('Power non émis : temporisation active')
+  if b'TX_DONE press_rc=0 release_rc=0' not in raw:raise RuntimeError('Power incertain ; aucune répétition')
+  m=re.search(rb'POWER_HOLD packets=(\d+) elapsed_ms=(\d+) planned_ms=3000 cadence_ms=64 rc=0',raw)
+  if not m or not 1<=int(m[1])<=47 or not 3000<=int(m[2])<=3200:raise RuntimeError('Durée Power non validée ; aucune répétition')
+  return dict(status='sent',hold_ms=int(m[2]),press_packets=int(m[1]),release_sent=True,power_state=None)

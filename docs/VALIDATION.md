@@ -36,3 +36,9 @@ Régénération : `pip install matplotlib numpy`, puis `python scripts/render_fi
 ## Contrôles de la distribution initiale
 
 Les sources préparées pour GitHub ont été recompilées : Nano ESP32 (Zephyr, chaîne et modules locaux épinglés) et Nano 33 IoT (identifiants factices). Aucun flash ni essai sur le poêle n’a été effectué pour cette publication. 29 tests radio Python et 30 tests service/transport/HA passent, ainsi que les contrôles JavaScript et C du protocole. Un clonage complet des dépendances sur une machine vierge n’a pas été exécuté.
+
+## Extension modes et Power (0.2.0)
+
+Voir [le journal synthétique des essais](MODES_POWER.md). Les validations précédentes restent historiques. Le démarrage par maintien Power de trois secondes est observé ; l’extinction par la Nano et un état physique marche/arrêt automatique restent non validés.
+
+Validation hors matériel de la distribution 0.2.0 : **83 tests Python réussis** (42 radio, 41 service/transport/helper), test C du protocole, vérifications JavaScript et test DOM local de la carte (un seul appel Power malgré un double clic, temporisation et absence d’état marche/arrêt inventé). Compilation des deux cartes et contrôle sans émission réalisés.

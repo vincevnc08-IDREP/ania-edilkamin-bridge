@@ -1,6 +1,6 @@
 lovelace:
   resources:
-    - url: /local/ania-remote.js?v=6
+    - url: /local/ania-remote.js?v=8
       type: module
 command_line:
   - sensor:
@@ -15,6 +15,10 @@ command_line:
         - observed_at
         - observed_epoch
         - reason
+        - mode
+        - power_mode
+        - shutdown_counter
+        - display_raw
 template:
   - sensor:
       - name: Ania consigne
@@ -30,12 +34,40 @@ template:
           observed_at: '{{ state_attr("sensor.ania_radio", "observed_at") }}'
           liaison: 'Passerelle Wi-Fi deux Nano'
 shell_command:
+  ania_power_3s: 'python3 /config/scripts/ania_ha.py power'
+  ania_mode: >-
+    python3 /config/scripts/ania_ha.py mode '{{ mode if mode in ["AUTO", "P1", "P2", "P3"] else "INVALID" }}'
   ania_plus_once: 'python3 /config/scripts/ania_ha.py plus'
   ania_minus_once: 'python3 /config/scripts/ania_ha.py minus'
   ania_target: 'python3 /config/scripts/ania_ha.py target {{ target_c | int(-1) }}'
   ania_target_status: >-
     python3 /config/scripts/ania_ha.py status '{{ request_id | regex_replace("[^a-zA-Z0-9_-]", "") }}'
 script:
+  ania_power:
+    alias: Ania — Power trois secondes
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - action: shell_command.ania_power_3s
+        response_variable: radio_result
+      - variables:
+          result: '{{ radio_result.stdout | from_json }}'
+      - stop: 'Résultat émission Power ; état physique non déduit'
+        response_variable: result
+  ania_mode:
+    alias: Ania — choisir le mode
+    mode: single
+    sequence:
+      - condition: template
+        value_template: '{{ mode in ["AUTO", "P1", "P2", "P3"] }}'
+      - action: shell_command.ania_mode
+        data:
+          mode: '{{ mode }}'
+        response_variable: radio_result
+      - variables:
+          result: '{{ radio_result.stdout | from_json }}'
+      - stop: 'Résultat radio du mode'
+        response_variable: result
   ania_setpoint:
     alias: Ania — valider la consigne
     mode: single

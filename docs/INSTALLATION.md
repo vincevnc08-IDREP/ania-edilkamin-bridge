@@ -12,7 +12,7 @@ python3 -c 'import secrets; print(secrets.token_hex(32))' > private/bridge.token
 chmod 600 private/*.token
 # Le conteneur s’exécute en UID/GID 1000 : adapter les droits du dossier à cet UID.
 sudo chown -R 1000:1000 private data
-docker build -f server/Dockerfile -t ania-radio:0.1.0 .
+docker build -f server/Dockerfile -t ania-radio:0.2.0 .
 export ANIA_GATEWAY_HOST='ADRESSE_NANO_IOT'
 export ANIA_SERVER_IP='ADRESSE_LAN_SERVEUR'
 docker run -d --name ania-radio --restart unless-stopped --read-only \
@@ -21,7 +21,7 @@ docker run -d --name ania-radio --restart unless-stopped --read-only \
   -e ANIA_GATEWAY_HOST -e ANIA_TX_GAIN=10 \
   -p "$ANIA_SERVER_IP:18766:18766" \
   -v "$PWD/private:/private" -v "$PWD/data:/data" \
-  --log-opt max-size=10m --log-opt max-file=3 ania-radio:0.1.0
+  --log-opt max-size=10m --log-opt max-file=3 ania-radio:0.2.0
 ```
 
 Le jeton `bridge.token` protège l’API ; `link.token` protège le lien Nano. Ils ont des rôles différents. Vérifier les journaux avec `docker logs --tail 50 ania-radio`. Le serveur doit être capable de joindre la Nano sur TCP 18765.
@@ -37,7 +37,7 @@ homeassistant:
   packages: !include_dir_named packages
 ```
 
-Vérifier la configuration HA avant redémarrage. En mode de gestion des ressources Lovelace par l’interface, ajouter manuellement `/local/ania-remote.js?v=6` en module JavaScript si nécessaire. Ne pas enregistrer la ressource deux fois.
+Vérifier la configuration HA avant redémarrage. En mode de gestion des ressources Lovelace par l’interface, ajouter manuellement `/local/ania-remote.js?v=8` en module JavaScript si nécessaire. Ne pas enregistrer la ressource deux fois.
 
 Ajouter une carte manuelle :
 
@@ -71,4 +71,4 @@ Un affichage immédiat de la demande ne prouve pas son exécution. La consigne o
 | Carte inconnue dans HA | Ressource JavaScript chargée et cache navigateur actualisé |
 | Échecs malgré le gain élevé | Placement et antenne avant hausse du gain ; indice non calibré en dBm |
 
-Ne pas automatiser des répétitions de +/− pour masquer une liaison défaillante. Les modes marche/arrêt et P1/P2/P3 ne sont pas disponibles.
+Ne pas automatiser des répétitions de +/− pour masquer une liaison défaillante. Auto/P1/P2/P3 nécessitent un retour frais. Power · 3 s est une touche de bascule manuelle, sans état physique déduit ; voir [les limites des essais](MODES_POWER.md).

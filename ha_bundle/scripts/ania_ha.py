@@ -7,18 +7,25 @@ BASE = os.environ.get('ANIA_BRIDGE_URL') or ((ROOT/'ania_bridge.url').read_text(
 def unavailable(reason):
     return {'status':'unavailable','setpoint_c':None,'observed_at':None,'reason':reason}
 
+def extra(data):
+    return {k:data.get(k) for k in ('power_mode','shutdown_counter','display_raw')}|{'mode':data.get('mode','AUTO')}
+
 def normalize(data):
+    if data.get('status') == 'sent':return {k:data[k] for k in ('status','request_id','command','hold_ms','press_packets','release_sent','power_state','cooldown_seconds') if k in data}
     if data.get('status') == 'in_progress':return {k:data[k] for k in ('status','request_id','target_c','steps_confirmed','setpoint_c','observed_at') if k in data}
     if data.get('status') == 'stale':
-        return {'status':'stale','setpoint_c':data.get('setpoint_c'),'observed_epoch':data.get('observed_at'),'observed_at':datetime.datetime.fromtimestamp(data['observed_at'],datetime.timezone.utc).isoformat() if data.get('observed_at') else None,'reason':data.get('reason','Reconnexion radio')}
+        return {'status':'stale','setpoint_c':data.get('setpoint_c'),'observed_epoch':data.get('observed_at'),'observed_at':datetime.datetime.fromtimestamp(data['observed_at'],datetime.timezone.utc).isoformat() if data.get('observed_at') else None,'reason':data.get('reason','Reconnexion radio'),**extra(data)}
     if data.get('status') != 'confirmed':
         return {'status':data.get('status','unavailable'),'setpoint_c':None,'observed_at':None,'reason':str(data.get('error',data.get('status','invalid_response')))[:240]}
     value, stamp = data.get('setpoint_c'), data.get('observed_at')
-    if isinstance(value, bool) or not isinstance(value,(float,int)) or not math.isfinite(value):
+    mode=data.get('mode','AUTO')
+    if mode not in ('AUTO','MANUAL','SHUTDOWN','OFF_DISPLAY'):raise ValueError('Invalid mode')
+    if mode=='MANUAL' and (type(data.get('power_mode')) is not int or data['power_mode'] not in (1,2,3)):raise ValueError('Invalid power')
+    if mode=='AUTO' and (isinstance(value, bool) or not isinstance(value,(float,int)) or not math.isfinite(value)):
         raise ValueError('Invalid setpoint')
     if not isinstance(stamp,(float,int)) or not math.isfinite(stamp) or not -5 <= time.time()-stamp <= 90:
         raise ValueError('Invalid or stale reading')
-    return {'status':'confirmed','setpoint_c':value,'observed_at':datetime.datetime.fromtimestamp(stamp,datetime.timezone.utc).isoformat(), 'observed_epoch':stamp}
+    return {'status':'confirmed','setpoint_c':value,'observed_at':datetime.datetime.fromtimestamp(stamp,datetime.timezone.utc).isoformat(), 'observed_epoch':stamp,**extra(data)}
 
 def request(path, payload=None):
     token=(ROOT/'ania_bridge.token').read_text().strip()
@@ -31,7 +38,7 @@ def request(path, payload=None):
         with urllib.request.build_opener(NoRedirect()).open(req,timeout=45 if payload else 30) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
-        if exc.code in (409,422,503):return json.load(exc)
+        if exc.code in (409,422,429,503):return json.load(exc)
         raise
 
 def run(mode, argument=None):
@@ -44,7 +51,8 @@ def run(mode, argument=None):
             target=int(argument)
             if str(target)!=argument or not 10<=target<=25:raise ValueError()
         except (TypeError,ValueError):return 2,unavailable("invalid_target")
-    if mode not in ('read','plus','minus','target'): return 2, unavailable('unsupported')
+    if mode=='mode' and argument not in ('AUTO','P1','P2','P3'):return 2,unavailable('invalid_mode')
+    if mode not in ('read','plus','minus','target','mode','power'): return 2, unavailable('unsupported')
     cache=ROOT/'.ania_last_reading.json'
     with (ROOT/'.ania_radio.lock').open('a') as lock:
         deadline=time.monotonic()+(8 if mode!='read' else 0)
@@ -66,6 +74,7 @@ def run(mode, argument=None):
                 # Persist intent before sending. Never replay an interrupted operation.
                 intent={'command':mode,'request_id':str(uuid.uuid4()),'created_at':time.time()}
                 if mode=='target':intent['target_c']=target
+                if mode=='mode':intent['mode']=argument
                 (ROOT/'.ania_last_intent.json').write_text(json.dumps(intent))
                 data=normalize(request('/v1/command',{k:v for k,v in intent.items() if k!='created_at'}))
         except Exception as exc:
@@ -80,7 +89,7 @@ def run(mode, argument=None):
                     data=dict(previous,status='stale',reason='Lecture radio en cours de rétablissement')
             except (OSError,ValueError,TypeError):pass
         if data['status']!='in_progress':cache.write_text(json.dumps(data))
-        return (0 if mode=='read' or data['status'] in ('confirmed','in_progress') else 1),data
+        return (0 if mode=='read' or data['status'] in ('confirmed','in_progress','sent') else 1),data
 
 if __name__=='__main__':
     code,data=run(sys.argv[1] if len(sys.argv) in (2,3) else '',sys.argv[2] if len(sys.argv)==3 else None)

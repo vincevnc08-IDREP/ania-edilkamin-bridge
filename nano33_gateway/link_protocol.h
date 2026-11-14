@@ -13,14 +13,16 @@ static inline void lput(uint8_t *p,uint32_t v) {for(int i=0;i<4;i++)p[i]=(uint8_
 static inline uint32_t lcrc(const uint8_t *p,size_t n) {uint32_t c=~0u;while(n--){c^=*p++;for(int j=0;j<8;j++)c=(c>>1)^((0u-(c&1))&0xedb88320u);}return ~c;}
 static inline void lseal(uint8_t *p) {p[0]='A';p[1]='N';p[2]=1;lput(p+60,lcrc(p,60));}
 static inline int lvalid(const uint8_t *p) {return p[0]=='A'&&p[1]=='N'&&p[2]==1&&p[3]<=LINK_DATA&&lget(p+60)==lcrc(p,60);}
-/* Only commands already tested in v11; no OFF, power mode or arbitrary shell. */
+/* Fixed command allowlist; no arbitrary shell, duration or absolute on/off. */
 static inline int lcommand(const char *s) {
+ if(!strcmp(s,"tx power_hold3s 10"))return 1;
+ if(!strcmp(s,"rx capture 500")||!strcmp(s,"rx listen 500"))return 1;
  if(!strcmp(s,"rx status")||!strcmp(s,"tx check"))return 1;
  for(unsigned g=0;g<=12;g++) {
   char num[3];unsigned n=0;if(g>=10)num[n++]='1';num[n++]=(char)('0'+g%10);num[n]=0;
-  const char *prefix[]={"tx plus_once ","tx minus_once ","tx poll ","tx fast_poll "};
-  for(unsigned i=0;i<4;i++){char c[40];strcpy(c,prefix[i]);strcat(c,num);
-   if(i<2){if(!strcmp(c,s))return 1;}else{strcat(c," 100 ");size_t z=strlen(c);strcpy(c+z,"8");if(!strcmp(c,s))return 1;strcpy(c+z,"20");if(!strcmp(c,s))return 1;}
+  const char *prefix[]={"tx plus_once ","tx minus_once ","tx manual_once ","tx automatic_once ","tx poll ","tx fast_poll "};
+  for(unsigned i=0;i<6;i++){char c[40];strcpy(c,prefix[i]);strcat(c,num);
+   if(i<4){if(!strcmp(c,s))return 1;}else{strcat(c," 100 ");size_t z=strlen(c);strcpy(c+z,"8");if(!strcmp(c,s))return 1;strcpy(c+z,"20");if(!strcmp(c,s))return 1;}
   }
  }
  return 0;

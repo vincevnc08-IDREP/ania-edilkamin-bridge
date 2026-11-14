@@ -3,7 +3,11 @@
 import argparse, hashlib, hmac, json, os, sqlite3, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-CAPABILITIES={'plus':True,'minus':True,'setpoint_read':True,'setpoint_target':True,'on':False,'off':False,'P1':False,'P2':False,'P3':False,'power_state_read':False}
+MODES_ENABLED=os.environ.get('ANIA_MODES_ENABLED','1')=='1'
+POWER_ENABLED=os.environ.get('ANIA_POWER_ENABLED','1')=='1'
+def state_fields(state):
+ return {k:state.get(k) for k in ('setpoint_c','observed_at','power_mode','shutdown_counter')}|{'mode':state.get('mode','AUTO'),'power_state':None}
+CAPABILITIES={'plus':True,'minus':True,'setpoint_read':True,'setpoint_target':True,'on':False,'off':False,'power_toggle_3s':POWER_ENABLED,'P1':MODES_ENABLED,'P2':MODES_ENABLED,'P3':MODES_ENABLED,'automatic':MODES_ENABLED,'mode_read':True,'power_state_read':False}
 class Service:
  def __init__(self,radio,database):
   self.radio=radio;self.lock=threading.Lock();self.db_lock=threading.Lock();self.cache=None;self.last_known=None;self.target_thread=None
@@ -12,7 +16,7 @@ class Service:
   self.db.execute('CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, command TEXT NOT NULL, result TEXT NOT NULL)')
   for rid,c,payload in self.db.execute('SELECT id,command,result FROM commands').fetchall():
    if json.loads(payload).get('status')=='in_progress':self.save(rid,c,{'request_id':rid,'status':'indeterminate','error':'bridge restarted; command is never replayed'})
-  self.db.commit()
+  self.db.execute('CREATE TABLE IF NOT EXISTS safety (key TEXT PRIMARY KEY, value REAL NOT NULL)');self.db.commit()
  def save(self,rid,command,result):
   with self.db_lock:
    self.db.execute('INSERT OR REPLACE INTO commands VALUES (?,?,?)',(rid,command,json.dumps(result)));self.db.commit()
@@ -33,23 +37,23 @@ class Service:
     finally:self.lock.release()
    self.stop.wait(.8)
  def observe_poll(self,poll):
-  from state import parse_frame
+  from state import parse_frame,state_key
   state=self.consensus.add(*poll)
   if state:
    if self.cache is None or state['observed_at']>=self.cache['observed_at']:
     self.cache=state;self.last_known=state
   elif self.cache:
-   values={p['setpoint_c'] for frame in poll[2] if (p:=parse_frame(frame)) and p['kind']=='display'}
+   values={state_key(p) for frame in poll[2] if (p:=parse_frame(frame)) and p['kind']=='display'}
    # Silence is not a contradictory reading. Keep the actual timestamp unchanged.
-   if any(value!=self.cache['setpoint_c'] for value in values) or time.time()-self.cache['observed_at']>10:self.cache=None
+   if any(value!=state_key(self.cache) for value in values) or time.time()-self.cache['observed_at']>10:self.cache=None
  def snapshot(self):
   state=self.cache
   if state and 0<=time.time()-state['observed_at']<=10:
-   return 200,{'status':'confirmed','setpoint_c':state['setpoint_c'],'observed_at':state['observed_at'],'age_seconds':time.time()-state['observed_at'],'display_raw':state['display_raw'],'power_state':None,'power_mode':None}
+   return 200,{'status':'confirmed','setpoint_c':state['setpoint_c'],'observed_at':state['observed_at'],'age_seconds':time.time()-state['observed_at'],'display_raw':state['display_raw'],**state_fields(state)}
   return None
  def unavailable(self,reason):
   state=self.last_known
-  return 200,dict(status='stale' if state else 'unavailable',setpoint_c=state['setpoint_c'] if state else None,observed_at=state['observed_at'] if state else None,reason=reason,power_state=None,power_mode=None)
+  return 200,dict(status='stale' if state else 'unavailable',setpoint_c=state['setpoint_c'] if state else None,observed_at=state['observed_at'] if state else None,reason=reason,**({k:v for k,v in state_fields(state).items() if k not in ('setpoint_c','observed_at')} if state else {}))
  def state(self):
   cached=self.snapshot()
   if cached:return cached
@@ -60,15 +64,21 @@ class Service:
    if cached:return cached
    state=self.radio.read_state(max_polls=6);self.cache=state;self.last_known=state
    if self.consensus is not None:self.consensus.samples.clear()
-   return 200,{'status':'confirmed','setpoint_c':state['setpoint_c'],'observed_at':state['observed_at'],'age_seconds':time.time()-state['observed_at'],'display_raw':state['display_raw'],'power_state':None,'power_mode':None}
+   return 200,{'status':'confirmed','setpoint_c':state['setpoint_c'],'observed_at':state['observed_at'],'age_seconds':time.time()-state['observed_at'],'display_raw':state['display_raw'],**state_fields(state)}
   except Exception as exc:
    self.cache=None
    return self.unavailable(str(exc))
   finally:self.lock.release()
  def command(self,data):
   command=data.get('command');rid=data.get('request_id')
+  if command not in ('plus','minus','target','mode','power'):return 422,{'status':'unsupported'}
+  if command=='power' and not POWER_ENABLED:return 422,{'status':'unsupported'}
   if command=='target':return self.target(data)
-  if command not in ('plus','minus'):return 422,{'status':'unsupported','command':command}
+  if command=='mode':
+   if not MODES_ENABLED:return 422,{'status':'unsupported','error':'Modes non activés'}
+   if data.get('mode') not in ('AUTO','P1','P2','P3'):return 422,{'status':'invalid_mode'}
+   command='mode:'+data['mode']
+  if command not in ('plus','minus','power') and not (isinstance(command,str) and command.startswith('mode:')):return 422,{'status':'unsupported','command':command}
   if not isinstance(rid,str) or not 16<=len(rid)<=100 or not all(c.isalnum()or c in '-_' for c in rid):return 400,{'status':'invalid_request_id'}
   if not self.command_gate.acquire(False):return 409,{'status':'busy','request_id':rid}
   self.command_pending.set()
@@ -79,13 +89,21 @@ class Service:
    if existing:
     if existing[0]!=command:return 409,{'status':'request_id_conflict','request_id':rid}
     result=json.loads(existing[1]);result['duplicate']=True
-    return (200 if result['status']=='confirmed' else 409),result
+    return (200 if result['status'] in ('confirmed','sent') else 409),result
+   if command=='power':
+    with self.db_lock:
+     row=self.db.execute("SELECT value FROM safety WHERE key='power_until'").fetchone()
+     if row and row[0]>time.time():return 429,{'status':'not_sent','error':'Temporisation Power active','retry_after':max(1,int(row[0]-time.time()+1))}
+     self.db.execute("INSERT OR REPLACE INTO safety VALUES ('power_until',?)",(time.time()+60,));self.db.commit()
    self.save(rid,command,{'request_id':rid,'status':'in_progress'})
    try:
     before=self.cache;self.cache=None
-    result=self.radio.step(command,before=before) if before is not None else self.radio.step(command)
+    if command=='power':
+     result=self.radio.power_hold3s();response=dict(result,request_id=rid,command='power',cooldown_seconds=60)
+     self.save(rid,command,response);return 200,response
+    result=self.radio.set_mode(command.split(':',1)[1]) if command.startswith('mode:') else (self.radio.step(command,before=before) if before is not None else self.radio.step(command))
     self.cache=result['after'];self.last_known=self.cache
-    response={'request_id':rid,'status':'confirmed','command':command,'setpoint_c':result['after']['setpoint_c'],'observed_at':result['after']['observed_at'],'result':result}
+    response={'request_id':rid,'status':'confirmed','command':command,'setpoint_c':result['after']['setpoint_c'],'observed_at':result['after']['observed_at'],'result':result,**state_fields(result['after'])}
     code=200
    except Exception as exc:
     response={'request_id':rid,'status':('not_sent' if getattr(exc,'command_sent',None) is False else 'indeterminate'),'command':command,'error':str(exc)};code=503
@@ -121,6 +139,7 @@ class Service:
    if not acquired:raise RuntimeError('Radio occupée, consigne non envoyée')
    # Always start a target sequence from a fresh independent radio reading.
    state=self.radio.read_state();self.cache=state;self.last_known=state
+   if state.get('mode','AUTO')!='AUTO':raise RuntimeError('Consigne température réservée au mode automatique')
    result.update(setpoint_c=state['setpoint_c'],observed_at=state['observed_at'])
    self.save(rid,key,result)
    for _ in range(15):

@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml/badge.svg)](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml) ![Statut](https://img.shields.io/badge/statut-prototype_expérimental-ffd166) ![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-5ce3cb)
 
-**Une passerelle radio expérimentale pour piloter la consigne d’un Edilkamin Ania depuis Home Assistant.**
+**Une passerelle radio expérimentale pour piloter la consigne, les modes et la touche Power d’un Edilkamin Ania depuis Home Assistant.**
 
 Deux Arduino Nano empilées, une liaison Wi-Fi et un boîtier imprimable. Documentation en français, code source et tests inclus.
 
@@ -18,7 +18,8 @@ Deux Arduino Nano empilées, une liaison Wi-Fi et un boîtier imprimable. Docume
 | Boutons + et − | Implémentés et testés |
 | Saisie d’une consigne de 10 à 25 °C | Séquence de pas confirmés |
 | Affichage de la dernière valeur et de sa fraîcheur | Implémenté |
-| Marche / arrêt, puissance P1 / P2 / P3 | **Non implémentés** |
+| Auto / P1 / P2 / P3 | Commandes intégrées ; transitions radio confirmées visuellement, sélection HA conditionnée au retour frais |
+| Power unique · appui radio 3 s | Démarrage déclenché et observé ; extinction par la Nano restant à valider |
 | Température ambiante, état réel de combustion | **Non validés** |
 | Déchiffrement du firmware Edilkamin | **Non réalisé** |
 
@@ -54,7 +55,7 @@ La Nano ESP32 utilise sa radio pour le poêle. La Nano 33 IoT assure le Wi-Fi r�
 
 ![Carte HA — données de démonstration](docs/assets/ha_card.png)
 
-La carte est fournie avec son package et son script : **+ / −, saisie de cible, validation et retour confirmé**. [Présentation et aperçu local](docs/CARTE_HA.md).
+La carte est fournie avec son package et son script : **+ / −, saisie de cible, Auto/P1/P2/P3 et Power 3 s**. [Présentation et aperçu local](docs/CARTE_HA.md).
 
 ## Dans ce dépôt
 
@@ -65,7 +66,7 @@ La carte est fournie avec son package et son script : **+ / −, saisie de cible
 - `enclosure/` : STL, source OpenSCAD, rendus et notice.
 - `tests/` : tests hors matériel ; [mesures et limites](docs/VALIDATION.md).
 
-Composants livrés : firmware radio/passerelle v13, service issu de v14, carte HA v6. La numérotation du dépôt commence séparément à `0.1.0`.
+Composants livrés : révision firmware/service 18, protocole de liaison 13, carte HA v8. Version du dépôt : **0.2.0 expérimentale**. Voir [les essais des modes et de Power](docs/MODES_POWER.md).
 
 ## Fiabilité
 
