@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ANIA — aperçu de la carte Home Assistant</title>
+<style>body{margin:0;padding:38px;background:#101d2c;color:#ecf4ff;font:16px system-ui,sans-serif}main{max-width:1080px;margin:auto}h1{font-size:30px;margin:0 0 12px}p{color:#b2c2d4;line-height:1.6}.cards{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:25px}h2{font-size:15px;color:#69deca}ania-remote{display:block}footer{margin-top:22px;color:#b2c2d4;font-size:13px}@media(max-width:750px){.cards{grid-template-columns:1fr}}</style>
+<main><h1>ANIA / HOME ASSISTANT</h1><p>La vraie carte du dépôt, affichée avec des données de démonstration.<br>Aucune connexion à Home Assistant, aucune émission radio.</p>
+<div class="cards"><section><h2>01 · CONSIGNE CONFIRMÉE</h2><ania-remote id="fresh"></ania-remote></section><section><h2>02 · LIAISON À RECONFIRMER</h2><ania-remote id="stale"></ania-remote></section></div>
+<footer>Valeurs fictives · La dernière consigne reste visible en cas de perte de liaison ; les commandes sont suspendues.</footer></main>
+<script>customElements.define('ha-card',class extends HTMLElement{constructor(){super();this.attachShadow({mode:'open'}).innerHTML='<style>:host{display:block}</style><slot></slot>'}});</script>
+<script src="../ha_bundle/www/ania-remote.js"></script>
+<script>
+// Local demonstration only. No network client and no live HA credentials.
+for(const [id,status,age] of [['fresh','confirmed',2],['stale','stale',125]]){
+ const card=document.getElementById(id);card.setConfig({entity:'sensor.ania_consigne',enable_commands:true});
+ const stamp=Date.now()-age*1000;
+ card.hass={states:{'sensor.ania_radio':{state:status,attributes:{setpoint_c:20,observed_epoch:stamp/1000},last_updated:new Date(stamp).toISOString()}},services:{script:{ania_plus:{},ania_minus:{},ania_setpoint:{}}},callService:async()=>{throw new Error('Aperçu uniquement : aucune commande envoyée.')}};
+ if(id==='fresh'){card.el('target').value='21';card.dirty=true;card.update();}
+}
+</script></html>

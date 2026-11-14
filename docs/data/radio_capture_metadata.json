@@ -1,0 +1,20 @@
+{
+  "source": "Capture historique après interrogation neutre, installation de référence",
+  "source_sha256": "836283390f989c892da3dc609d82d6bf7795eeca8f00ffa7ccfc2c21181ba8da",
+  "samples": 32000,
+  "sampling_hz": 4000000,
+  "duration_ms": 8.0,
+  "radio_tuning_mhz": 2480,
+  "sample_gaps": 0,
+  "quantization_bits": 8,
+  "crc_verified_text_frames": 1,
+  "payload_bytes": 16,
+  "sop_time_ms": 4.49275,
+  "power_units": "dB relatifs au maximum de chaque graphique, pas des dBm",
+  "limitations": [
+    "Sous-échantillonnage déclaré sans filtre anti-repliement : spectre apparent non calibré.",
+    "Axe spectral relatif à la bande de base ; aucune conversion en fréquence RF absolue.",
+    "Signal seul insuffisant pour identifier un émetteur ; décodage et contexte utilisés.",
+    "Ni payload, ni adresse, ni horodatage personnel exportés."
+  ]
+}

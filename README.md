@@ -44,6 +44,18 @@ La Nano ESP32 utilise sa radio pour le poêle. La Nano 33 IoT assure le Wi-Fi r�
 4. [Installer la passerelle et Home Assistant](docs/INSTALLATION.md).
 5. Imprimer d’abord [le gabarit du boîtier](enclosure/gabarit_essai.stl).
 
+## Relevés radio
+
+![Spectre et cascade d’une capture réelle](docs/assets/radio_waterfall.png)
+
+[Lire les relevés radio et leurs limites de mesure](docs/RELEVES_RADIO.md). Spectre et cascade calculés à partir des I/Q archivés, dans une présentation inspirée des logiciels SDR.
+
+## Carte Home Assistant
+
+![Carte HA — données de démonstration](docs/assets/ha_card.png)
+
+La carte est fournie avec son package et son script : **+ / −, saisie de cible, validation et retour confirmé**. [Présentation et aperçu local](docs/CARTE_HA.md).
+
 ## Dans ce dépôt
 
 - `radio/` : firmware Zephyr ESP32-S3, décodeur et client Python.

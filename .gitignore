@@ -15,3 +15,5 @@ build/
 *.log
 .DS_Store
 captures/
+node_modules/
+package-lock.json
