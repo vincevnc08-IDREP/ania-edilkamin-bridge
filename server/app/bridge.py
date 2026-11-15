@@ -58,6 +58,7 @@ class Service:
   cached=self.snapshot()
   if cached:return cached
   if self.command_pending.is_set():return self.unavailable('Commande en cours')
+  if self.monitor is not None and self.monitor.is_alive():return self.unavailable('Lecture radio en cours')
   if not self.lock.acquire(timeout=.5):return self.unavailable('Reconnexion radio en cours')
   try:
    cached=self.snapshot()
@@ -101,7 +102,7 @@ class Service:
     if command=='power':
      result=self.radio.power_hold3s();response=dict(result,request_id=rid,command='power',cooldown_seconds=60)
      self.save(rid,command,response);return 200,response
-    result=self.radio.set_mode(command.split(':',1)[1]) if command.startswith('mode:') else (self.radio.step(command,before=before) if before is not None else self.radio.step(command))
+    result=(self.radio.set_mode(command.split(':',1)[1],before=before) if before is not None else self.radio.set_mode(command.split(':',1)[1])) if command.startswith('mode:') else (self.radio.step(command,before=before) if before is not None else self.radio.step(command))
     self.cache=result['after'];self.last_known=self.cache
     response={'request_id':rid,'status':'confirmed','command':command,'setpoint_c':result['after']['setpoint_c'],'observed_at':result['after']['observed_at'],'result':result,**state_fields(result['after'])}
     code=200

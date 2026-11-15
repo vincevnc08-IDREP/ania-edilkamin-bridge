@@ -1,6 +1,6 @@
 # ANIA · Radio Bridge
 
-> **Mise à jour du 15 novembre 2026 :** liaison UART sans recâblage, contrôles plus rapides et reprise bornée des lectures. Mettre à jour les deux firmwares ensemble. [Détails et limites des essais](docs/UPDATE_UART.md). La fiabilité complète de P1/P2/P3 reste à confirmer.
+> **Mise à jour réception V25 :** détection radio améliorée et sélection des modes HA optimisée. **La réactivité reste insuffisante et variable : elle n’égale pas encore celle de la télécommande.** Dernière séquence : P1 2,2 s, P2 5,6 s, P3 4,9 s. [Mesures et travail restant](docs/UPDATE_RX_V25.md).
 
 [![Tests](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml/badge.svg)](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml) ![Statut](https://img.shields.io/badge/statut-prototype_expérimental-ffd166) ![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-5ce3cb)
 
@@ -20,7 +20,7 @@ Deux Arduino Nano empilées, une liaison Wi-Fi et un boîtier imprimable. Docume
 | Boutons + et − | Implémentés et testés |
 | Saisie d’une consigne de 10 à 25 °C | Séquence de pas confirmés |
 | Affichage de la dernière valeur et de sa fraîcheur | Implémenté |
-| Auto / P1 / P2 / P3 | Commandes intégrées ; transitions radio confirmées visuellement, sélection HA conditionnée au retour frais |
+| Auto / P1 / P2 / P3 | Commandes intégrées ; transitions radio confirmées visuellement, sélection HA avec confirmation radio, délais encore variables |
 | Power unique · appui radio 3 s | Démarrage déclenché et observé ; extinction par la Nano restant à valider |
 | Température ambiante, état réel de combustion | **Non validés** |
 | Déchiffrement du firmware Edilkamin | **Non réalisé** |

@@ -33,10 +33,13 @@ class Tests(unittest.TestCase):
   r=self.radio();r.read_state.return_value=state(3);r.confirm_mode.side_effect=RuntimeError('no setting screen')
   with self.assertRaises(RuntimeError):r.set_mode('P2')
   r.button_once.assert_called_once_with('manual')
- def test_preread_failure_not_sent(self):
-  r=self.radio();r.read_state.side_effect=RuntimeError('timeout')
-  with self.assertRaises(PrecheckError):r.set_mode('P2')
-  r.button_once.assert_not_called()
+ def test_unknown_baseline_only_selector_until_confirmation(self):
+  r=self.radio();r.read_state.side_effect=RuntimeError('timeout');r.confirm_mode.side_effect=RuntimeError('unconfirmed')
+  with self.assertRaises(RuntimeError):r.set_mode('P2')
+  r.button_once.assert_called_once_with('manual')
+ def test_unknown_baseline_auto_confirmation(self):
+  r=self.radio();r.read_state.side_effect=RuntimeError('timeout');r.confirm_mode.return_value=state()
+  self.assertEqual(r.set_mode('AUTO')['actions'],['automatic']);r.button_once.assert_called_once_with('automatic')
  def test_expired_confirmation_no_step(self):
   r=self.radio();r.read_state.return_value=state(3);old=state(3,True);old['observed_at']-=5;r.confirm_mode.return_value=old
   with self.assertRaises(RuntimeError):r.set_mode('P2')

@@ -24,6 +24,7 @@ class Radio:
   if self.s is not None:self.s.close()
   self.s=NetworkStream(self.host,self.port,self.token)
   status=self.cmd('rx status',rb'^.*mode=RX_TX_MANUAL.*\n',timeout=3)
+  self.inline_poll_check=b'inline_poll_check=1 ' in status
   if b'version=13 ' not in status or b'ready=1 ' not in status:
    self.s.close();raise RuntimeError(status)
  def close(self):
@@ -75,7 +76,9 @@ class Radio:
     self.connect()
  def _poll_once(self,window=8,save=True):
   from fast_reply import parse_fast
-  begin=time.monotonic();self.check();checked=time.monotonic();started=time.time()
+  begin=time.monotonic()
+  if not getattr(self,'inline_poll_check',False):self.check()
+  checked=time.monotonic();started=time.time()
   raw=self.cmd(f'tx fast_poll {self.gain} 100 {window}',rb'^FAST_END[^\n]*\n',timeout=10)
   received=time.monotonic();name=f'{self.index:03d}';self.index+=1
   frames,m=parse_fast(raw,started)
@@ -129,20 +132,28 @@ class Radio:
   finally:journal['total_seconds']=time.monotonic()-began;path.write_text(json.dumps(journal,indent=2))
 
  def confirm_mode(self,mode,level=None,setting_menu=False):
-  consensus=Consensus()
-  for _ in range(20):
+  consensus=Consensus();deadline=time.monotonic()+(6 if setting_menu else 10)
+  for _ in range(30):
+   if time.monotonic()>=deadline:break
    poll=self.poll();state=consensus.add(*poll)
    if state and state.get('mode')==mode and (level is None or state.get('power_mode')==level) and (not setting_menu or state.get('display_context')=='setting_menu'):return state
   raise RuntimeError('Mode non confirmé ; aucune répétition automatique')
- def set_mode(self,target):
+ def set_mode(self,target,before=None):
   if target not in ('AUTO','P1','P2','P3'):raise PrecheckError('Mode non autorisé')
-  try:before=self.read_state()
-  except Exception as exc:raise PrecheckError('Lecture préalable impossible : '+str(exc)) from exc
+  began=time.monotonic()
+  reused=(getattr(self,'s',None) is not None and not self.s.closed and isinstance(before,dict)
+          and before.get('mode') in ('AUTO','MANUAL') and isinstance(before.get('observed_at'),(int,float))
+          and 0<=time.time()-before['observed_at']<=10 and len(set(before.get('confirmed_by_polls',[])))>=2
+          and (time.time()-before['observed_at']<=2 or (target=='AUTO')!=(before['mode']=='AUTO') or (target!='AUTO' and before.get('power_mode')!=int(target[1]))))
+  if not reused:
+   try:before=self.read_state(max_polls=2)
+   except Exception:before=None  # M/A select a mode; only +/- needs a known level.
+  precheck_seconds=time.monotonic()-began
   state=before;sent=False;actions=[]
-  if state.get('mode') not in ('AUTO','MANUAL'):raise PrecheckError('Réglage refusé pendant extinction ou état non confirmé')
+  if state is not None and state.get('mode') not in ('AUTO','MANUAL'):raise PrecheckError('Réglage refusé pendant extinction ou état non confirmé')
   try:
    wanted='AUTO' if target=='AUTO' else 'MANUAL'
-   if state['mode']!=wanted:
+   if state is None or state['mode']!=wanted:
     sent=True;button='automatic' if wanted=='AUTO' else 'manual'
     self.button_once(button);actions.append(button);state=self.confirm_mode(wanted)
    if wanted=='MANUAL':
@@ -159,7 +170,7 @@ class Radio:
      step=1 if state['power_mode']<level else -1;button='plus' if step==1 else 'minus';sent=True
      self.button_once(button);actions.append(button);state=self.confirm_mode('MANUAL',state['power_mode']+step)
     if state['power_mode']!=level:raise RuntimeError('Puissance cible non atteinte')
-   return dict(before=before,after=state,actions=actions)
+   return dict(before=before,after=state,actions=actions,baseline_reused=reused,precheck_seconds=precheck_seconds,total_seconds=time.monotonic()-began)
   except Exception as exc:
    if not sent:raise PrecheckError(str(exc)) from exc
    raise

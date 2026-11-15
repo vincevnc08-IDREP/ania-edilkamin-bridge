@@ -1,5 +1,13 @@
 # Historique
 
+## 2026-11-15 — Réception V25 et modes HA
+
+- Détection SOP plus tolérante, CRC et confirmation par deux lectures conservés.
+- Réutilisation bornée des états confirmés et suppression des lectures concurrentes inutiles.
+- Carte HA : sélection explicite des modes possible avec un état ancien ; pas de température bloqués tant que la lecture est périmée.
+- Rafraîchissement HA toutes les 2 s.
+- **Limite ouverte : réactivité encore insuffisante face à la télécommande.** [Résultats et suivi](docs/UPDATE_RX_V25.md).
+
 ## 2026-11-15 — Transport UART et réactivité
 
 - UART 230400 bauds sur le câblage existant ; blocs CRC32 et déduplication conservés.

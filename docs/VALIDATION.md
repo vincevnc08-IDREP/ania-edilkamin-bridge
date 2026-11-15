@@ -19,6 +19,7 @@ pip install -r requirements.txt
 python -m unittest discover -s radio -p 'test_*.py'
 python -m unittest discover -s tests -p 'test_*.py'
 node tests/test_card.js
+node tests/test_card_stale.cjs
 cc -Wall -Wextra tests/test_wire.c -o /tmp/ania-wire-test
 /tmp/ania-wire-test
 ```
@@ -42,3 +43,7 @@ Les sources préparées pour GitHub ont été recompilées : Nano ESP32 (Zephyr,
 Voir [le journal synthétique des essais](MODES_POWER.md). Les validations précédentes restent historiques. Le démarrage par maintien Power de trois secondes est observé ; l’extinction par la Nano et un état physique marche/arrêt automatique restent non validés.
 
 Validation hors matériel de la distribution 0.2.0 : **83 tests Python réussis** (42 radio, 41 service/transport/helper), test C du protocole, vérifications JavaScript et test DOM local de la carte (un seul appel Power malgré un double clic, temporisation et absence d’état marche/arrêt inventé). Compilation des deux cartes et contrôle sans émission réalisés.
+
+## Réception V25
+
+Publication validée hors matériel : **102 tests Python réussis** (42 radio et 60 service/transport), deux contrôles JavaScript et test C du protocole. Les mesures sur le poêle et la limite de réactivité encore ouverte sont consignées dans [UPDATE_RX_V25.md](UPDATE_RX_V25.md).

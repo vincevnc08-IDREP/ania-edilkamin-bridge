@@ -58,10 +58,10 @@ class AniaRemote extends HTMLElement {
     this.el('minus').disabled=disabled||r.mode!=='AUTO'||r.value<=10||!this.hasService('ania_minus');
     const v=this.el('target').value,t=Number(v),valid=v.trim()!==''&&Number.isInteger(t)&&t>=10&&t<=25;
     this.el('target').disabled=this.busy||r.mode!=='AUTO';
-    for(const m of ['AUTO','P1','P2','P3']){const button=this.el('mode_'+m);const selected=m==='AUTO'?r.mode==='AUTO':r.mode==='MANUAL'&&r.power===Number(m[1]);button.classList.toggle('selected',selected&&r.fresh);button.disabled=disabled||!this.config.enable_modes||!['AUTO','MANUAL'].includes(r.mode)||selected||!this.hasService('ania_mode');}
+    for(const m of ['AUTO','P1','P2','P3']){const button=this.el('mode_'+m);const selected=m==='AUTO'?r.mode==='AUTO':r.mode==='MANUAL'&&r.power===Number(m[1]);button.classList.toggle('selected',selected&&r.fresh);button.disabled=!this.config.enable_commands||this.busy||!this.config.enable_modes||['SHUTDOWN','OFF_DISPLAY'].includes(r.mode)||(selected&&r.fresh)||!this.hasService('ania_mode');}
     this.el('apply').disabled=disabled||r.mode!=='AUTO'||!valid||t===r.value||!this.hasService('ania_setpoint');
     this.el('apply').textContent=this.busy?'En cours…':'Valider';
-    this.el('status').textContent=this.busy?this.progress||'Envoi de la demande…':this.message||(!r.fresh?(r.known?'Lecture datant de '+(age<60?age+' s':Math.floor(age/60)+' min')+' · reconnexion en cours. Commandes suspendues.':'Connexion au poêle en cours…'):this.waitAfter?'Attente d’une nouvelle lecture avant le prochain appui.':'Lecture reçue il y a '+age+' s'+(this.latency?' · dernier changement confirmé en '+this.latency+' s.':'.'));
+    this.el('status').textContent=this.busy?this.progress||'Envoi de la demande…':this.message||(!r.fresh?(r.known?'Lecture datant de '+(age<60?age+' s':Math.floor(age/60)+' min')+' · nouvelle lecture en cours. Température suspendue.':'Connexion au poêle en cours…'):this.waitAfter?'Attente d’une nouvelle lecture avant le prochain appui.':'Lecture reçue il y a '+age+' s'+(this.latency?' · dernier changement confirmé en '+this.latency+' s.':'.'));
   }
   async power(){
     if(this.el('power').disabled)return;
@@ -96,9 +96,9 @@ class AniaRemote extends HTMLElement {
   }
   async resume(id){this.busy=true;this.progress='Reprise du suivi de la demande…';this.update();try{await this.follow(id);}catch(e){this.message=e.message;this.waitAfter=Date.now();}finally{this.busy=false;this.update();}}
   async command(direction){
-    if(this.busy||this.waitAfter||!this.config.enable_commands||!this.reading().fresh)return;
-    if(direction==='target'&&this.el('apply').disabled)return;
     const isMode=['AUTO','P1','P2','P3'].includes(direction);
+    if(this.busy||!this.config.enable_commands||(!isMode&&(this.waitAfter||!this.reading().fresh)))return;
+    if(direction==='target'&&this.el('apply').disabled)return;
     if(isMode&&this.el('mode_'+direction).disabled)return;
     if(direction!=='target'&&!['plus','minus'].includes(direction)&&!isMode)return;
     const start=Date.now();this.busy=true;this.message='';this.progress=isMode?'Sélection '+direction+' · confirmation en cours…':direction==='target'?'Demande de '+this.el('target').value+' °C…':'Demande '+(direction==='plus'?'+1':'−1')+' °C · confirmation en cours…';this.update();
@@ -106,7 +106,7 @@ class AniaRemote extends HTMLElement {
       const data=await this.call(isMode?'ania_mode':direction==='target'?'ania_setpoint':'ania_'+direction,isMode?{mode:direction}:direction==='target'?{target_c:Number(this.el('target').value)}:{});
       if(data?.status==='in_progress'&&data.request_id)await this.follow(data.request_id);
       else if(data?.status==='confirmed')this.accept(data);
-      else throw Error(data?.status==='not_sent'||data?.status==='busy'?'Commande non envoyée : liaison occupée.':'Retour non confirmé. Attendre une nouvelle lecture avant un nouvel appui.');
+      else throw Error(data?.status==='not_sent'||data?.status==='busy'?'Commande non envoyée : état ou liaison indisponible.':'Retour non confirmé. Attendre une nouvelle lecture avant un nouvel appui.');
       this.latency=((Date.now()-start)/1000).toLocaleString('fr-FR',{maximumFractionDigits:1});this.dirty=false;this.waitAfter=0;
     }catch(e){this.message=e.message||'Demande non confirmée.';this.waitAfter=Date.now();}
     finally{this.busy=false;this.update();}

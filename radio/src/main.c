@@ -56,7 +56,7 @@ static void worker(void *a,void *b,void *c){
 }
 K_THREAD_DEFINE(worker_id,2560,worker,NULL,NULL,NULL,K_PRIO_COOP(1),0,SYS_FOREVER_MS);
 static int status(const struct shell *s,size_t argc,char **argv){
- shell_print(s,"ANIA_RING ready=%d version=13 lo_mhz=%u fs=4000000 max_pairs=%u mode=RX_TX_MANUAL capture_variant=14 modes_variant=15 release_variant=18 menu_probe_variant=19 uart_link_revision=22 rx_revision=23 passive_capture_ms=500",ready,freq,MAX_PAIRS);return 0;
+ shell_print(s,"ANIA_RING ready=%d version=13 lo_mhz=%u fs=4000000 max_pairs=%u mode=RX_TX_MANUAL capture_variant=14 modes_variant=15 release_variant=18 menu_probe_variant=19 uart_link_revision=22 rx_revision=25 sop_errors_max=12 passive_capture_ms=500",ready,freq,MAX_PAIRS);return 0;
 }
 static int acquire(unsigned ms,unsigned sample_bits,unsigned sample_stride){
  bits=sample_bits;stride=sample_stride;

@@ -26,7 +26,7 @@ static int attempt(const float *v,size_t n,int polarity,int soft,struct fast_fra
  }
  for(unsigned block=0;block<2;block++){
   unsigned errors=0;for(unsigned j=0;j<64;j++)errors+=((sign*v[block*68+j]-offset>0)!=((SOP>>j)&1));
-  if(errors>10)return 0;
+  if(errors>12)return 0;
  }
  unsigned count=0,wanted=19;int quality=1;
  for(size_t k=133;k+32<=n&&count<wanted;k+=32){
@@ -70,8 +70,8 @@ int fast_decode(const int8_t *iq,size_t n,float *disc,float *chips,struct fast_f
   for(size_t k=0;k<length;k++){size_t p=phase+4*k;chips[k]=(disc[p]+disc[p+1]+disc[p+2]+disc[p+3])*.25f;}
   uint64_t bits=0;for(unsigned j=0;j<64;j++)if(chips[j]>0)bits|=UINT64_C(1)<<j;
   for(size_t k=0;k+165<=length;k++){
-   unsigned errors=__builtin_popcountll(bits^SOP);int polarity=errors>=54;
-   if(errors<=10||polarity){
+   unsigned errors=__builtin_popcountll(bits^SOP);int polarity=errors>=52;
+   if(errors<=12||polarity){
     struct fast_frame frame;
     if(attempt(chips+k,length-k,polarity,0,&frame)||attempt(chips+k,length-k,polarity,1,&frame)){
      frame.sample=phase+4*k;int duplicate=0;
