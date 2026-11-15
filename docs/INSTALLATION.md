@@ -67,7 +67,7 @@ Un affichage immédiat de la demande ne prouve pas son exécution. La consigne o
 | Pas de connexion réseau | Alimentation, SSID, mot de passe, adresse réservée, TCP 18765 |
 | Erreur d’authentification | Bon jeton au bon endroit, pas d’espaces supplémentaires |
 | Valeur périmée | Rapprocher la passerelle, éloigner du métal, vérifier la réception |
-| Pas de changement de consigne | Profil radio compatible, réponses confirmées, alimentation et SPI |
+| Pas de changement de consigne | Profil radio compatible, réponses confirmées, alimentation et UART |
 | Carte inconnue dans HA | Ressource JavaScript chargée et cache navigateur actualisé |
 | Échecs malgré le gain élevé | Placement et antenne avant hausse du gain ; indice non calibré en dBm |
 

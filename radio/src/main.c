@@ -4,6 +4,7 @@
  */
 #include <stdlib.h>
 #include <esp_attr.h>
+#include <esp_rom_crc.h>
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/shell/shell.h>
@@ -17,6 +18,7 @@
 static int16_t *iq;
 static unsigned freq=2422;
 static int ready;
+extern void ania_link_quiet(int enabled);
 static struct esp_sdr_ring_stats stats;
 static int run_rc;
 static size_t target,stored;
@@ -54,7 +56,7 @@ static void worker(void *a,void *b,void *c){
 }
 K_THREAD_DEFINE(worker_id,2560,worker,NULL,NULL,NULL,K_PRIO_COOP(1),0,SYS_FOREVER_MS);
 static int status(const struct shell *s,size_t argc,char **argv){
- shell_print(s,"ANIA_RING ready=%d version=13 lo_mhz=%u fs=4000000 max_pairs=%u mode=RX_TX_MANUAL capture_variant=14 modes_variant=15 release_variant=18 passive_capture_ms=500",ready,freq,MAX_PAIRS);return 0;
+ shell_print(s,"ANIA_RING ready=%d version=13 lo_mhz=%u fs=4000000 max_pairs=%u mode=RX_TX_MANUAL capture_variant=14 modes_variant=15 release_variant=18 menu_probe_variant=19 uart_link_revision=22 rx_revision=23 passive_capture_ms=500",ready,freq,MAX_PAIRS);return 0;
 }
 static int acquire(unsigned ms,unsigned sample_bits,unsigned sample_stride){
  bits=sample_bits;stride=sample_stride;
@@ -80,6 +82,7 @@ extern uint32_t __esp_sdr_bank0_start[];
 ESP_SDR_HIGH_BUF_DEFINE(uint32_t, tx_tail, [5000], 16);
 static size_t tx_count;
 static int tx_checked;
+static int64_t wave_verified_until;
 static float *decode_disc,*decode_chips;
 static void stage_wave(const uint32_t *src,size_t n){
  tx_count=n;memcpy(__esp_sdr_bank0_start,src,MIN(n,16384U)*4);
@@ -98,15 +101,20 @@ static int check_wave(const struct shell *s,const uint32_t *src,size_t n,const c
  if(n>21384)return -EINVAL;
  stage_wave(src,n);size_t cap;uint32_t *scratch=esp_sdr_tx_loop_buf(0,&cap);if(!scratch)return -ENOMEM;
  uint32_t max_us=0;for(size_t k=0;k<n;k+=16000){size_t take=MIN((size_t)16000,n-k);unsigned key=irq_lock();uint32_t t=k_cycle_get_32();tx_gen(NULL,scratch,k,take);uint32_t dt=k_cyc_to_us_floor32(k_cycle_get_32()-t);irq_unlock(key);max_us=MAX(max_us,dt);if(memcmp(scratch,src+k,take*4))return -EIO;}
- uint32_t crc=crc32_ieee((const uint8_t*)src,n*4);if(crc!=expected_crc || max_us>=300)return -EIO;
- shell_print(s,"WAVE_CHECK name=%s count=%u crc32=%u max_fill_us=%u no_rf=1",name,(unsigned)n,crc,max_us);return 0;
+ uint32_t crc=esp_rom_crc32_le(0,(const uint8_t*)src,n*4);if(crc!=expected_crc || max_us>=300)return -EIO;
+ /* CRC, generated samples and fill timing were all checked above. */
+ return 0;
 }
 static int tx_check(const struct shell *s,size_t argc,char **argv){
- tx_checked=0;int rc=check_wave(s,wave_plus,ARRAY_SIZE(wave_plus),"plus",CRC_PLUS);if(!rc)rc=check_wave(s,wave_minus,ARRAY_SIZE(wave_minus),"minus",CRC_MINUS);if(!rc)rc=check_wave(s,wave_release,ARRAY_SIZE(wave_release),"release",CRC_RELEASE);if(!rc)rc=check_wave(s,wave_manual,ARRAY_SIZE(wave_manual),"manual",CRC_MANUAL);if(!rc)rc=check_wave(s,wave_automatic,ARRAY_SIZE(wave_automatic),"automatic",CRC_AUTOMATIC);if(!rc)rc=check_wave(s,wave_manual_release,ARRAY_SIZE(wave_manual_release),"manual_release",CRC_MANUAL_RELEASE);if(!rc)rc=check_wave(s,wave_automatic_release,ARRAY_SIZE(wave_automatic_release),"automatic_release",CRC_AUTOMATIC_RELEASE);if(!rc)rc=check_wave(s,wave_power,ARRAY_SIZE(wave_power),"power",CRC_POWER);if(!rc)rc=check_wave(s,wave_power_release,ARRAY_SIZE(wave_power_release),"power_release",CRC_POWER_RELEASE);tx_checked=rc==0;shell_print(s,"TX_CHECK rc=%d ready=%d no_rf=1",rc,tx_checked);return rc;
+ uint32_t began=k_cycle_get_32();
+ if(k_uptime_get()<wave_verified_until){tx_checked=1;shell_print(s,"TX_CHECK rc=0 ready=1 no_rf=1 cached=1");return 0;}
+ if(esp_rom_crc32_le(0,(const uint8_t*)"123456789",9)!=0xcbf43926){tx_checked=0;shell_print(s,"TX_CHECK rc=-5 ready=0 no_rf=1");return -EIO;}
+ tx_checked=0;int rc=check_wave(s,wave_plus,ARRAY_SIZE(wave_plus),"plus",CRC_PLUS);if(!rc)rc=check_wave(s,wave_minus,ARRAY_SIZE(wave_minus),"minus",CRC_MINUS);if(!rc)rc=check_wave(s,wave_release,ARRAY_SIZE(wave_release),"release",CRC_RELEASE);if(!rc)rc=check_wave(s,wave_manual,ARRAY_SIZE(wave_manual),"manual",CRC_MANUAL);if(!rc)rc=check_wave(s,wave_automatic,ARRAY_SIZE(wave_automatic),"automatic",CRC_AUTOMATIC);if(!rc)rc=check_wave(s,wave_manual_release,ARRAY_SIZE(wave_manual_release),"manual_release",CRC_MANUAL_RELEASE);if(!rc)rc=check_wave(s,wave_automatic_release,ARRAY_SIZE(wave_automatic_release),"automatic_release",CRC_AUTOMATIC_RELEASE);if(!rc)rc=check_wave(s,wave_power,ARRAY_SIZE(wave_power),"power",CRC_POWER);if(!rc)rc=check_wave(s,wave_power_release,ARRAY_SIZE(wave_power_release),"power_release",CRC_POWER_RELEASE);tx_checked=rc==0;wave_verified_until=rc?0:k_uptime_get()+60000;shell_print(s,"TX_CHECK rc=%d ready=%d no_rf=1 checked_waves=9 elapsed_us=%u",rc,tx_checked,k_cyc_to_us_floor32(k_cycle_get_32()-began));return rc;
 }
 static int tx_one(const struct shell *s,const uint32_t *src,size_t n,const char *name){
- stage_wave(src,n);int rc=esp_sdr_tx_dac_play_gen(tx_gen,NULL,n);struct esp_sdr_tx_dac_stats st;esp_sdr_tx_dac_get_stats(&st);
+ stage_wave(src,n);ania_link_quiet(1);int rc=esp_sdr_tx_dac_play_gen(tx_gen,NULL,n);ania_link_quiet(0);struct esp_sdr_tx_dac_stats st;esp_sdr_tx_dac_get_stats(&st);
  shell_print(s,"TX_PACKET name=%s rc=%d errors=%u restarts=%u fill_us_max=%u slack_us_min=%d elapsed_us=%u",name,rc,st.errors,st.restarts,st.fill_us_max,st.slack_us_min,st.elapsed_us);
+ if(rc||st.errors||st.restarts)wave_verified_until=0;
  return rc?rc:(st.errors||st.restarts?-EIO:0);
 }
 static int tx_command_once(const struct shell *s,size_t argc,char **argv){
@@ -115,6 +123,8 @@ static int tx_command_once(const struct shell *s,size_t argc,char **argv){
  else if(!strcmp(name,"minus_once")){press=wave_minus;press_n=ARRAY_SIZE(wave_minus);}
  else if(!strcmp(name,"manual_once")){press=wave_manual;press_n=ARRAY_SIZE(wave_manual);release=wave_manual_release;release_n=ARRAY_SIZE(wave_manual_release);}
  else if(!strcmp(name,"automatic_once")){press=wave_automatic;press_n=ARRAY_SIZE(wave_automatic);release=wave_automatic_release;release_n=ARRAY_SIZE(wave_automatic_release);}
+ else if(!strcmp(name,"menu_hold3s")){press=wave_manual;press_n=ARRAY_SIZE(wave_manual);release=wave_manual_release;release_n=ARRAY_SIZE(wave_manual_release);}
+ else if(!strcmp(name,"menu_exit_once")){press=wave_power;press_n=ARRAY_SIZE(wave_power);release=wave_power_release;release_n=ARRAY_SIZE(wave_power_release);}
  else if(!strcmp(name,"power_hold3s")){if(k_uptime_get()<power_next_ms){shell_print(s,"POWER_REJECT cooldown_ms=%lld no_rf=1",(long long)(power_next_ms-k_uptime_get()));return -EAGAIN;}press=wave_power;press_n=ARRAY_SIZE(wave_power);release=wave_power_release;release_n=ARRAY_SIZE(wave_power_release);}
  else return -EINVAL;
  unsigned gain=argc>1?strtoul(argv[1],0,10):0;if(gain>12)return -EINVAL;
@@ -126,7 +136,7 @@ static int tx_command_once(const struct shell *s,size_t argc,char **argv){
  int rc=esp_sdr_set_freq(2480);if(!rc)freq=2480;if(!rc)rc=esp_sdr_tx_set_gain(gain);
  if(rc){shell_print(s,"TX_PREFLIGHT rc=%d no_rf=1",rc);return rc;}
  unsigned packets=0;int64_t hold_start=k_uptime_get();
- if(!strcmp(name,"power_hold3s")){
+ if(!strcmp(name,"power_hold3s")||!strcmp(name,"menu_hold3s")){
   /* Experimental hold: fixed captured packet every 64 ms, for at most 3 s. */
   for(unsigned i=0;i<47;i++){
    int64_t wait=hold_start+(int64_t)i*64-k_uptime_get();if(wait>0)k_sleep(K_MSEC(wait));
@@ -134,7 +144,7 @@ static int tx_command_once(const struct shell *s,size_t argc,char **argv){
    rc=tx_one(s,press,press_n,name);packets++;if(rc)break;
   }
   int64_t wait=hold_start+3000-k_uptime_get();if(!rc&&wait>0)k_sleep(K_MSEC(wait));
-  shell_print(s,"POWER_HOLD packets=%u elapsed_ms=%lld planned_ms=3000 cadence_ms=64 rc=%d",packets,(long long)(k_uptime_get()-hold_start),rc);
+  shell_print(s,!strcmp(name,"menu_hold3s")?"MENU_HOLD packets=%u elapsed_ms=%lld planned_ms=3000 cadence_ms=64 rc=%d":"POWER_HOLD packets=%u elapsed_ms=%lld planned_ms=3000 cadence_ms=64 rc=%d",packets,(long long)(k_uptime_get()-hold_start),rc);
  }else{if(!rc)rc=tx_one(s,press,press_n,name);k_sleep(K_MSEC(100));}
  /* Release is attempted even if any press waveform failed. */
  int release_rc=tx_one(s,release,release_n,"release");
@@ -165,14 +175,32 @@ static int poll_once(const struct shell *s,size_t argc,char **argv){
  esp_sdr_set_turnaround(settle,settle==3000);
  int rc=esp_sdr_set_freq(2480);if(!rc)freq=2480;if(!rc)rc=esp_sdr_tx_set_gain(gain);if(rc)return rc;
  stage_wave(wave_release,ARRAY_SIZE(wave_release));
+ ania_link_quiet(1);
  rc=esp_sdr_tx_dac_play_gen(tx_gen,NULL,ARRAY_SIZE(wave_release));uint64_t tx_end=k_cycle_get_64();
  int rx_rc=acquire(window,8,1);
+ ania_link_quiet(0);
  struct esp_sdr_tx_dac_stats st;esp_sdr_tx_dac_get_stats(&st);
+ if(rc||st.errors||st.restarts)wave_verified_until=0;
  uint64_t delivery=first_sink_cycles?k_cyc_to_us_floor64(first_sink_cycles-tx_end):0;
  shell_print(s,"POLL tx_rc=%d rx_rc=%d gain=%u tx_errors=%u tx_restarts=%u first_delivery_after_tx_us=%llu first_sink_pairs=%u rx_retuned=0 settle_us=%u",rc,rx_rc,gain,st.errors,st.restarts,delivery,(unsigned)first_sink_pairs,settle);
  if(!strcmp(argv[0],"fast_poll"))dump_fast(s);else dump_record(s);return rc?rc:rx_rc;
 }
+static int dump_long_decoded(const struct shell *s);
+static int long_poll(const struct shell *s,size_t argc,char **argv){
+ if(argc!=2||strcmp(argv[1],"10")||!ready||!tx_checked)return -EINVAL;
+ tx_checked=0;k_sleep(K_MSEC(30));esp_sdr_set_turnaround(100,false);
+ int rc=esp_sdr_set_freq(2480);if(!rc)rc=esp_sdr_tx_set_gain(10);if(rc)return rc;freq=2480;
+ stage_wave(wave_release,ARRAY_SIZE(wave_release));ania_link_quiet(1);
+ rc=esp_sdr_tx_dac_play_gen(tx_gen,NULL,ARRAY_SIZE(wave_release));
+ int rx_rc=acquire(500,8,1);ania_link_quiet(0);
+ struct esp_sdr_tx_dac_stats st;esp_sdr_tx_dac_get_stats(&st);
+ shell_print(s,"LONG_POLL tx_rc=%d rx_rc=%d tx_errors=%u tx_restarts=%u neutral=1",rc,rx_rc,st.errors,st.restarts);
+ dump_long_decoded(s);return rc?rc:rx_rc;
+}
 SHELL_STATIC_SUBCMD_SET_CREATE(tx_cmds,
+ SHELL_CMD_ARG(long_poll,NULL,"Neutral query followed by 500 ms RX",long_poll,2,0),
+ SHELL_CMD_ARG(menu_hold3s,NULL,"Supervised M hold; no parameter changes",tx_command_once,1,1),
+ SHELL_CMD_ARG(menu_exit_once,NULL,"Short Power for a confirmed menu only",tx_command_once,1,1),
  SHELL_CMD_ARG(power_hold3s,NULL,"Fixed 3s Power; 60s cooldown; explicit command only",tx_command_once,1,1),
  SHELL_CMD_ARG(manual_once,NULL,"One M press and release",tx_command_once,1,1),
  SHELL_CMD_ARG(automatic_once,NULL,"One A press and release",tx_command_once,1,1),
@@ -216,7 +244,15 @@ static int passive_capture(const struct shell *s,size_t argc,char **argv){
  shell_print(s,"PASSIVE tx_packets=0 window_ms=500 rc=%d",rc);
  int dump_rc=!strcmp(argv[0],"listen")?dump_long_decoded(s):dump_record(s);return rc?rc:dump_rc;
 }
+static int rx_gain_command(const struct shell *s,size_t argc,char **argv){
+ if(argc!=2)return -EINVAL;
+ char *end;long gain=strtol(argv[1],&end,10);
+ if(*end||gain < -1||gain>89)return -EINVAL;
+ int rc=esp_sdr_rx_set_gain((int)gain);
+ shell_print(s,"RX_GAIN rc=%d selected=%d max=%u no_tx=1",rc,esp_sdr_rx_get_gain(),esp_sdr_rx_gain_max());return rc;
+}
 SHELL_STATIC_SUBCMD_SET_CREATE(rx_cmds,
+ SHELL_CMD_ARG(gain,NULL,"Receive gain only",rx_gain_command,2,0),
  SHELL_CMD_ARG(listen,NULL,"Passive 500 ms decoded capture; no RF transmission",passive_capture,2,0),
  SHELL_CMD_ARG(capture,NULL,"Passive 500 ms IQ capture; no RF transmission",passive_capture,2,0),
  SHELL_CMD(status,NULL,"RX ring status",status),

@@ -1,5 +1,7 @@
 # ANIA · Radio Bridge
 
+> **Mise à jour du 15 novembre 2026 :** liaison UART sans recâblage, contrôles plus rapides et reprise bornée des lectures. Mettre à jour les deux firmwares ensemble. [Détails et limites des essais](docs/UPDATE_UART.md). La fiabilité complète de P1/P2/P3 reste à confirmer.
+
 [![Tests](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml/badge.svg)](https://github.com/vincevnc08-IDREP/ania-edilkamin-bridge/actions/workflows/tests.yml) ![Statut](https://img.shields.io/badge/statut-prototype_expérimental-ffd166) ![Licence](https://img.shields.io/badge/licence-GPL--3.0--or--later-5ce3cb)
 
 **Une passerelle radio expérimentale pour piloter la consigne, les modes et la touche Power d’un Edilkamin Ania depuis Home Assistant.**
@@ -31,7 +33,7 @@ Deux Arduino Nano empilées, une liaison Wi-Fi et un boîtier imprimable. Docume
 flowchart LR
  HA[Home Assistant] <-->|HTTP authentifié · LAN| S[Serveur Python / Docker]
  S <-->|TCP Wi-Fi authentifié| I[Nano 33 IoT]
- I <-->|SPI + READY| E[Nano ESP32]
+ I <-->|UART 230400| E[Nano ESP32]
  E <-->|Radio expérimentale · 2480 MHz| P[Poêle Ania]
 ```
 
@@ -62,7 +64,7 @@ La carte est fournie avec son package et son script : **+ / −, saisie de cible
 ## Dans ce dépôt
 
 - `radio/` : firmware Zephyr ESP32-S3, décodeur et client Python.
-- `nano33_gateway/` : firmware Arduino Nano 33 IoT, protocole SPI.
+- `nano33_gateway/` : firmware Arduino Nano 33 IoT, protocole UART.
 - `server/` : API HTTP, confirmation et déduplication des commandes.
 - `ha_bundle/` : package HA, script Python et carte Lovelace.
 - `enclosure/` : STL, source OpenSCAD, rendus et notice.
@@ -76,7 +78,7 @@ Composants livrés : révision firmware/service 18, protocole de liaison 13, car
 
 Une demande de température n’est jamais présentée comme une mesure confirmée. Les commandes relatives ne sont pas répétées aveuglément après une coupure. Les réponses sont contrôlées par CRC et consensus ; une séquence s’arrête en cas d’incertitude.
 
-La qualité de réception et le placement restent déterminants. Des changements ont été confirmés en environ 3 secondes, mais ce n’est pas une garantie de délai. Les erreurs radio/SPI résiduelles ne sont pas éliminées.
+La qualité de réception et le placement restent déterminants. Des changements ont été confirmés en environ 3 secondes, mais ce n’est pas une garantie de délai. Les erreurs radio résiduelles ne sont pas éliminées.
 
 ## Licence et crédits
 

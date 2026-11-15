@@ -8,11 +8,11 @@ Les deux cartes ont leurs composants dans le même sens et leurs USB du même c�
 
 | Contact commun | Rôle | GPIO ESP32 |
 |---|---|---|
-| D10 | CS | 21 |
-| D11 | MOSI | 38 |
-| D12 | MISO | 47 |
-| D13 | SCK | 48 |
-| D2 | READY | 5 |
+| D10 | Inactif, connexion existante conservée | 21 |
+| D11 | TX IoT → RX ESP32 (UART) | 38 |
+| D12 | RX IoT ← TX ESP32 (UART) | 47 |
+| D13 | Inactif, connexion existante conservée | 48 |
+| D2 | Inactif, connexion existante conservée | 5 |
 | GND × 2 | Masse commune | — |
 | VIN | Alimentation commune du montage étudié | — |
 

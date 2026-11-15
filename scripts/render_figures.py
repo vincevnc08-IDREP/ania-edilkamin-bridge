@@ -27,11 +27,11 @@ boxes=[('Home\nAssistant','Carte + consigne'),('Serveur\nPython','API + dédupli
 for i,(title,sub) in enumerate(boxes):
  x=.25+i*2.6;ax.add_patch(FancyBboxPatch((x,1.4),2.05,1.55,boxstyle='round,pad=.08,rounding_size=.15',facecolor='#20364b',edgecolor=TEAL if i in [2,3] else '#40566a',linewidth=1.4));ax.text(x+1.025,2.37,title,ha='center',va='center',fontsize=15,fontweight='bold');ax.text(x+1.025,1.65,sub,ha='center',fontsize=9,color=MUTED)
  if i<4:
-  ax.annotate('',(x+2.52,2.15),(x+2.15,2.15),arrowprops=dict(arrowstyle='<->',color=TEAL,lw=1.7));ax.text(x+2.34,1.08,['HTTP LAN','TCP Wi-Fi','SPI','2480 MHz'][i],ha='center',fontsize=9,color=GOLD)
-ax.text(.25,.3,'Les modes marche/arrêt et P1/P2/P3 restent hors périmètre validé.',color=MUTED);save(fig,'architecture')
+  ax.annotate('',(x+2.52,2.15),(x+2.15,2.15),arrowprops=dict(arrowstyle='<->',color=TEAL,lw=1.7));ax.text(x+2.34,1.08,['HTTP LAN','TCP Wi-Fi','UART','2480 MHz'][i],ha='center',fontsize=9,color=GOLD)
+ax.text(.25,.3,'Power 3 s testé ; fiabilité P1/P2/P3 encore à confirmer.',color=MUTED);save(fig,'architecture')
 fig,ax=plt.subplots(figsize=(10,6));ax.set_xlim(0,10);ax.set_ylim(0,6);ax.axis('off');ax.text(.3,5.55,'EMPILAGE / CONTACTS À CONSERVER',fontsize=19,fontweight='bold');ax.text(.3,5.05,'Schéma fonctionnel — ce n’est pas une vue de repérage physique des broches.',color=MUTED,fontsize=10)
 for x,title in [(1,'Nano 33 IoT · dessous'),(6.2,'Nano ESP32 · dessus')]:
  ax.add_patch(FancyBboxPatch((x,.6),2.8,3.9,boxstyle='round,pad=.1',facecolor='#20364b',edgecolor=TEAL));ax.text(x+1.4,4.1,title,ha='center',fontweight='bold',fontsize=11)
-for i,(label,role) in enumerate([('D10','CS'),('D11','MOSI'),('D12','MISO'),('D13','SCK'),('D2','READY'),('GND ×2','Masse'),('VIN','Alimentation*')]):
+for i,(label,role) in enumerate([('D10','Inactif'),('D11','IoT TX → ESP RX'),('D12','IoT RX ← ESP TX'),('D13','Inactif'),('D2','Inactif'),('GND ×2','Masse'),('VIN','Alimentation*')]):
  y=3.6-i*.4;ax.plot([3.8,6.1],[y,y],color=TEAL,lw=1.4);ax.text(2.4,y,label,ha='center',va='center',fontsize=10);ax.text(7.6,y,label,ha='center',va='center',fontsize=10);ax.text(4.95,y+.07,role,ha='center',fontsize=9,color=GOLD)
 ax.text(.3,.12,'* Vérifier les révisions et le chemin d’alimentation. Tous les autres contacts restent séparés.',fontsize=10,color=MUTED);save(fig,'liaison')

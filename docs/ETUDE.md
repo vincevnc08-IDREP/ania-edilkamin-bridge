@@ -2,7 +2,7 @@
 
 ## Pourquoi deux cartes ?
 
-L’approche retenue exploite les fonctions SDR expérimentales de la radio ESP32-S3. Dans cette implémentation, elles ne coexistent pas avec le Wi-Fi réseau normal. Une Nano 33 IoT séparée transporte donc les commandes et réponses par Wi-Fi, puis SPI.
+L’approche retenue exploite les fonctions SDR expérimentales de la radio ESP32-S3. Dans cette implémentation, elles ne coexistent pas avec le Wi-Fi réseau normal. Une Nano 33 IoT séparée transporte donc les commandes et réponses par Wi-Fi, puis UART.
 
 ## Du signal à la consigne
 
@@ -30,7 +30,7 @@ Ces choix décrivent le profil observé, pas une spécification officielle CYRF6
 
 ## Fiabilisation
 
-La liaison SPI utilise des blocs de 64 octets, CRC32, identifiant de démarrage, séquence et acquittement. Répéter un bloc de transport ne doit pas répéter une émission radio. Le service conserve les identifiants des demandes dans SQLite. Après redémarrage, une action inachevée reste indéterminée.
+La liaison UART (230400 bauds, 8N1) utilise des blocs de 64 octets, CRC32, identifiant de démarrage, séquence et acquittement. Répéter un bloc de transport ne doit pas répéter une émission radio. Le service conserve les identifiants des demandes dans SQLite. Après redémarrage, une action inachevée reste indéterminée.
 
 Une consigne cible est une succession de pas d’un degré, chaque pas devant être confirmé. Aucun ordre marche/arrêt n’est exposé. Les mécanismes de sécurité propres au poêle ne sont pas modifiés.
 

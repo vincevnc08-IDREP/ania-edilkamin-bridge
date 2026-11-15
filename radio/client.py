@@ -38,8 +38,17 @@ class Radio:
    raise TimeoutError('Commande non répétée : '+command+' '+repr(bytes(raw[-500:])))
   except Exception:self.s.close();raise
  def check(self):
-  raw=self.cmd('tx check',rb'^TX_CHECK[^\n]*\n',timeout=3)
-  if b'TX_CHECK rc=0 ready=1' not in raw:raise RuntimeError(raw)
+  # This command verifies waveforms in memory and emits no RF. One reconnect
+  # is safe here; actual button commands are never replayed.
+  for attempt in range(2):
+   try:
+    if self.s.closed:self.connect()
+    raw=self.cmd('tx check',rb'^TX_CHECK[^\n]*\n',timeout=3)
+    if b'TX_CHECK rc=0 ready=1' not in raw:raise RuntimeError(raw)
+    return
+   except (TimeoutError,ConnectionError,OSError):
+    if attempt:raise
+    self.connect()
  def poll_iq(self,window=8):
   begin=time.monotonic();self.check();checked=time.monotonic();started=time.time();raw=self.cmd(f'tx poll {self.gain} 100 {window}',rb'^RING_END[^\n]*\n')
   received=time.monotonic()
@@ -59,6 +68,12 @@ class Radio:
   (self.out/(name+'.json')).write_text(json.dumps(m,indent=2))
   return name,started,frames,m
  def poll(self,window=8,save=True):
+  for attempt in range(2):
+   try:return self._poll_once(window,save)
+   except (TimeoutError,ConnectionError,OSError):
+    if attempt:raise
+    self.connect()
+ def _poll_once(self,window=8,save=True):
   from fast_reply import parse_fast
   begin=time.monotonic();self.check();checked=time.monotonic();started=time.time()
   raw=self.cmd(f'tx fast_poll {self.gain} 100 {window}',rb'^FAST_END[^\n]*\n',timeout=10)
@@ -113,15 +128,17 @@ class Radio:
   except Exception as exc:journal.update(result='indeterminate',error=str(exc));raise
   finally:journal['total_seconds']=time.monotonic()-began;path.write_text(json.dumps(journal,indent=2))
 
- def confirm_mode(self,mode,level=None):
+ def confirm_mode(self,mode,level=None,setting_menu=False):
   consensus=Consensus()
   for _ in range(20):
    poll=self.poll();state=consensus.add(*poll)
-   if state and state.get('mode')==mode and (level is None or state.get('power_mode')==level):return state
+   if state and state.get('mode')==mode and (level is None or state.get('power_mode')==level) and (not setting_menu or state.get('display_context')=='setting_menu'):return state
   raise RuntimeError('Mode non confirmé ; aucune répétition automatique')
  def set_mode(self,target):
   if target not in ('AUTO','P1','P2','P3'):raise PrecheckError('Mode non autorisé')
-  before=self.read_state();state=before;sent=False;actions=[]
+  try:before=self.read_state()
+  except Exception as exc:raise PrecheckError('Lecture préalable impossible : '+str(exc)) from exc
+  state=before;sent=False;actions=[]
   if state.get('mode') not in ('AUTO','MANUAL'):raise PrecheckError('Réglage refusé pendant extinction ou état non confirmé')
   try:
    wanted='AUTO' if target=='AUTO' else 'MANUAL'
@@ -132,9 +149,13 @@ class Radio:
     level=int(target[1])
     for _ in range(2):
      if state['power_mode']==level:break
-     # Fresh pre-read prevents an external mode change from becoming a temperature step.
-     current=self.read_state()
-     if current.get('mode')!='MANUAL' or current.get('power_mode')!=state['power_mode']:raise RuntimeError('Changement externe de réglage ; arrêt de la séquence')
+     # +/- changes power only while the M setting screen is freshly confirmed.
+     # Reuse that confirmation immediately; extra reads can outlive the screen.
+     if state.get('display_context')!='setting_menu' or not 0<=time.time()-state['observed_at']<=2:
+      sent=True;self.button_once('manual');actions.append('manual')
+      state=self.confirm_mode('MANUAL',setting_menu=True)
+     if state['power_mode']==level:break
+     if not 0<=time.time()-state['observed_at']<=2:raise RuntimeError('Écran de réglage expiré ; aucun +/- envoyé')
      step=1 if state['power_mode']<level else -1;button='plus' if step==1 else 'minus';sent=True
      self.button_once(button);actions.append(button);state=self.confirm_mode('MANUAL',state['power_mode']+step)
     if state['power_mode']!=level:raise RuntimeError('Puissance cible non atteinte')

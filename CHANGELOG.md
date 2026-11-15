@@ -1,5 +1,14 @@
 # Historique
 
+## 2026-11-15 — Transport UART et réactivité
+
+- UART 230400 bauds sur le câblage existant ; blocs CRC32 et déduplication conservés.
+- Contrôles des formes d’onde mis en cache avec invalidation sur erreur.
+- Reconnexion bornée pour les lectures, aucun rejeu automatique des touches.
+- Pas P1/P2/P3 conditionnés à un écran de réglage récent.
+- Schémas actualisés ; [mesures et limites](docs/UPDATE_UART.md).
+- Aucun changement de boîtier dans cette mise à jour.
+
 ## Documentation enrichie
 
 - Spectre et cascade issus d’une capture radio réelle, avec données dérivées et scripts de rendu.

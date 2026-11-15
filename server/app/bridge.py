@@ -35,7 +35,7 @@ class Service:
      self.cache=None;self.consensus.samples.clear()
      print('Monitor unavailable:',str(exc),flush=True)
     finally:self.lock.release()
-   self.stop.wait(.8)
+   self.stop.wait(.25)
  def observe_poll(self,poll):
   from state import parse_frame,state_key
   state=self.consensus.add(*poll)

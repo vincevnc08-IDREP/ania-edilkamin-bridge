@@ -6,7 +6,7 @@ from client import Radio,PrecheckError
 META=dict(continuous_verified=True,neutral_poll=True,tx_rc=0,rx_rc=0,tx_errors=0,tx_restarts=0)
 def f(text):
  b=bytes([16])+text.encode().ljust(16);b+=frame_crc(b).to_bytes(2,'little');return dict(frame_hex=b.hex(),continuous_verified=True)
-def state(mode,level=None):return dict(mode=mode,power_mode=level,setpoint_c=17 if mode=='AUTO' else None,observed_at=time.time())
+def state(mode,level=None):return dict(mode=mode,power_mode=level,setpoint_c=17 if mode=='AUTO' else None,observed_at=time.time(),display_context='setting_menu')
 class Tests(unittest.TestCase):
  def test_manual_levels_and_dot(self):
   for level in range(1,4):
@@ -41,8 +41,8 @@ class Tests(unittest.TestCase):
   with self.assertRaises(RuntimeError):r.set_mode('P3')
   r.button_once.assert_called_once_with('manual')
  def test_external_change_stops_sequence(self):
-  r=self.radio();r.read_state.side_effect=[state('MANUAL',1),state('AUTO')]
+  r=self.radio();r.read_state.return_value=state('MANUAL',1);r.confirm_mode.side_effect=RuntimeError('mode changed externally')
   with self.assertRaises(RuntimeError):r.set_mode('P3')
-  r.button_once.assert_not_called()
+  self.assertEqual([c.args[0] for c in r.button_once.call_args_list],['plus'])
  def test_current_target_sends_nothing(self):
   r=self.radio();r.read_state.return_value=state('MANUAL',2);self.assertEqual(r.set_mode('P2')['actions'],[]);r.button_once.assert_not_called()

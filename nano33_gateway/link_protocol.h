@@ -15,6 +15,10 @@ static inline void lseal(uint8_t *p) {p[0]='A';p[1]='N';p[2]=1;lput(p+60,lcrc(p,
 static inline int lvalid(const uint8_t *p) {return p[0]=='A'&&p[1]=='N'&&p[2]==1&&p[3]<=LINK_DATA&&lget(p+60)==lcrc(p,60);}
 /* Fixed command allowlist; no arbitrary shell, duration or absolute on/off. */
 static inline int lcommand(const char *s) {
+ if(!strcmp(s,"tx long_poll 10"))return 1;
+ const char *gains[]={"rx gain -1","rx gain 20","rx gain 30","rx gain 40","rx gain 50","rx gain 60","rx gain 70","rx gain 80"};
+ for(unsigned i=0;i<8;i++)if(!strcmp(s,gains[i]))return 1;
+ if(!strcmp(s,"tx menu_hold3s 10")||!strcmp(s,"tx menu_exit_once 10"))return 1;
  if(!strcmp(s,"tx power_hold3s 10"))return 1;
  if(!strcmp(s,"rx capture 500")||!strcmp(s,"rx listen 500"))return 1;
  if(!strcmp(s,"rx status")||!strcmp(s,"tx check"))return 1;

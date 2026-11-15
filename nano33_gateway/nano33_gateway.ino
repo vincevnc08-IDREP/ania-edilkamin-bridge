@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Nano 33 IoT: WiFiNINA TCP bridge, external SPI master, no RF replay.
- * NINA uses SPI1; SPI below is the external D11/D12/D13 bus.
+ * Nano 33 IoT: WiFiNINA TCP bridge, external UART link, no RF replay.
+ * NINA uses internal SPI1; BoardLink uses D11 TX / D12 RX.
  */
 #include <SPI.h>
+#include "wiring_private.h"
+Uart BoardLink(&sercom1,12,11,SERCOM_RX_PAD_3,UART_TX_PAD_0);
+void SERCOM1_Handler(){BoardLink.IrqHandler();}
 #include <WiFiNINA.h>
 #include "link_protocol.h"
 #include "secrets.h"
@@ -15,6 +18,8 @@ uint32_t lastFlush=0, lastWifiCheck=0, spiGood=0, spiBad=0, spiHandshakeErrors=0
 int wifiStatus=WL_IDLE_STATUS;
 char pendingCommand[41], line[112];size_t lineLen=0;
 uint8_t netOut[1440];size_t netUsed=0;
+uint8_t lastBadFrame[64], lastValidFrame[64];
+uint32_t badHeader=0,badCrc=0;
 bool authenticated=false, linkSynced=false, serverStarted=false;
 
 void disconnectClient() {
@@ -33,18 +38,23 @@ void flushNetwork() {
 }
 void spiTick() {
  static uint32_t lastTransaction=0;
- if((uint32_t)(micros()-lastTransaction)<1000 || !digitalRead(READY_PIN))return;
+ if((uint32_t)(micros()-lastTransaction)<1000)return;
  lastTransaction=micros();
- uint8_t tx[64]={0},rx[64];lput(tx+4,bootId);lput(tx+12,ackOutput);
+ uint8_t tx[64]={0},rx[64];size_t count=0;
+ lput(tx+4,bootId);lput(tx+12,ackOutput);
  if(pendingId){tx[3]=strlen(pendingCommand);lput(tx+8,pendingId);memcpy(tx+20,pendingCommand,tx[3]);}
- lseal(tx);SPI.beginTransaction(SPISettings(2000000,MSBFIRST,SPI_MODE0));digitalWrite(CS_PIN,LOW);delayMicroseconds(3);
- for(unsigned i=0;i<64;i++)rx[i]=SPI.transfer(tx[i]);
- /* CS rising completes the ESP32 target transaction and triggers READY low. */
- delayMicroseconds(3);digitalWrite(CS_PIN,HIGH);SPI.endTransaction();
- uint32_t start=micros();while(digitalRead(READY_PIN)&&(uint32_t)(micros()-start)<10000){}
- bool handshake=!digitalRead(READY_PIN);
- if(!handshake){spiHandshakeErrors++;return;}
- if(!lvalid(rx)){spiBad++;return;}
+ lseal(tx);BoardLink.write(tx,64);BoardLink.flush();
+ uint32_t started=millis();bool valid=false;
+ while((uint32_t)(millis()-started)<50){
+  if(!BoardLink.available())continue;
+  rx[count++]=(uint8_t)BoardLink.read();
+  if(count<64)continue;
+  if(lvalid(rx)){valid=true;break;}
+  spiBad++;memcpy(lastBadFrame,rx,64);badCrc++;
+  memmove(rx,rx+1,63);count=63;
+ }
+ if(!valid){spiHandshakeErrors++;return;}
+ memcpy(lastValidFrame,rx,64);
  spiGood++;
  lastGood=millis();uint32_t b=lget(rx+4);
  if(b!=bootId){disconnectClient();bootId=b;linkSynced=false;ackOutput=lget(rx+8);}
@@ -64,23 +74,28 @@ void spiTick() {
 }
 void setup() {
  pinMode(CS_PIN,OUTPUT);digitalWrite(CS_PIN,HIGH);pinMode(READY_PIN,INPUT_PULLDOWN);
- SPI.begin();Serial.begin(115200);WiFi.setTimeout(3000);
+ pinMode(13,INPUT);
+ BoardLink.begin(230400);pinPeripheral(11,PIO_SERCOM);pinPeripheral(12,PIO_SERCOM);
+ Serial.begin(115200);WiFi.setTimeout(3000);
  // No wait for USB. Boot is passive: no command to the stove.
  lastWifiTry=millis()-15000u;
 }
 void loop() {
  if(Serial.available() && Serial.read()=='?') {
-  Serial.print("ANIA_IOT version=13 wifi_status=");Serial.print(wifiStatus);
+  Serial.print("ANIA_IOT version=13 link_revision=22 transport=UART baud=230400 wifi_status=");Serial.print(wifiStatus);
   Serial.print(" ip=");Serial.print(WiFi.localIP());
   Serial.print(" ready_pin=");Serial.print(digitalRead(READY_PIN));
-  Serial.print(" spi_good=");Serial.print(spiGood);Serial.print(" spi_bad=");Serial.print(spiBad);
-  Serial.print(" spi_handshake_errors=");Serial.print(spiHandshakeErrors);
+  Serial.print(" uart_good=");Serial.print(spiGood);Serial.print(" uart_bad=");Serial.print(spiBad);
+  Serial.print(" uart_timeouts=");Serial.print(spiHandshakeErrors);
+  Serial.print(" bad_header=");Serial.print(badHeader);Serial.print(" bad_crc=");Serial.print(badCrc);
   Serial.print(" boot_id=");Serial.print(bootId);Serial.print(" flags=");Serial.print(flags);
   Serial.print(" synced=");Serial.print(linkSynced);Serial.print(" pending=");Serial.println(pendingId);
+  Serial.print("LAST_BAD ");for(unsigned i=0;i<64;i++){if(lastBadFrame[i]<16)Serial.print('0');Serial.print(lastBadFrame[i],HEX);}Serial.println();
+  Serial.print("LAST_VALID ");for(unsigned i=0;i<64;i++){if(lastValidFrame[i]<16)Serial.print('0');Serial.print(lastValidFrame[i],HEX);}Serial.println();
  }
  if(client&&!client.connected())disconnectClient();
  if(pendingId&&(uint32_t)(millis()-pendingSince)>2000)disconnectClient();
- for(unsigned i=0;i<32;i++){spiTick();if(netUsed>=1400)break;delayMicroseconds(30);}
+ for(unsigned i=0;i<4;i++){spiTick();if(netUsed>=1400)break;delayMicroseconds(30);}
  if((uint32_t)(millis()-lastGood)>2000){disconnectClient();linkSynced=false;}
  if(netUsed&&(netUsed>=1400||(uint32_t)(millis()-lastFlush)>=5))flushNetwork();
  if((uint32_t)(millis()-lastWifiCheck)>=1000){lastWifiCheck=millis();wifiStatus=WiFi.status();}
